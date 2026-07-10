@@ -1,0 +1,40 @@
+# Job Search Automation — Python dependencies
+# Install:  pip install -r requirements.txt
+#           playwright install       # one-time, downloads browser binaries
+# Verified against the imports in tools/ (July 2026). Versions unpinned;
+# pin them once a working environment is confirmed to guarantee reproducibility.
+
+# NOTA: el razonamiento con LLM lo hace Claude Code en la conversación
+# (tokens de tu suscripción). Los tools son 100% determinísticos, por eso
+# NO hace falta el paquete `anthropic` ni una ANTHROPIC_API_KEY.
+
+# ─── Config / env ────────────────────────────────────────────
+python-dotenv
+
+# ─── Google Sheets / Drive (OAuth) ───────────────────────────
+google-api-python-client
+google-auth
+google-auth-oauthlib
+
+# ─── HTTP + scraping ─────────────────────────────────────────
+requests
+beautifulsoup4
+playwright
+
+# ─── Document generation (CV / cover letter) ─────────────────
+# PDF: se renderiza con Chromium (Playwright, ya arriba) vía print-to-pdf.
+# No se usa weasyprint porque en Windows requiere el runtime nativo de GTK/Pango.
+markdown
+python-docx
+
+# ─── Profile parsing (PDF / DOCX ingestion) ──────────────────
+pypdf
+
+# ─── API backend (Stage 2+) ──────────────────────────────────
+# FastAPI app, SQLite ORM + migrations. No `anthropic` here either —
+# reasoning still runs through the user's own agent CLI (see api/agent/).
+fastapi
+uvicorn[standard]
+python-multipart          # multipart form uploads (chat attachments, CV import)
+sqlalchemy>=2.0
+alembic

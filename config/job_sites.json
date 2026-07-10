@@ -1,0 +1,187 @@
+{
+  "version": "1.0",
+  "notes": "Catálogo de fuentes: endpoints, mapeo de campos y notas de ToS. NO es donde se configura tu mercado. Los valores escritos como ${VAR} salen del entorno (data/credentials/.env — ver .env.example): JOB_SEARCH_COUNTRY / JOB_SEARCH_LOCATION para Indeed, LINKEDIN_LOCATION para LinkedIn, y TARGET_REGION para el filtro de elegibilidad geográfica. Se dejan acá como documentación del shape de cada request; nadie los lee de este archivo.",
+  "sites": {
+    "remotive": {
+      "enabled": true,
+      "type": "api",
+      "base_url": "https://remotive.com/api/remote-jobs",
+      "params": {
+        "limit": 50
+      },
+      "search_param": "search",
+      "fields_map": {
+        "id": "id",
+        "title": "title",
+        "company": "company_name",
+        "url": "url",
+        "description": "description",
+        "location": "candidate_required_location",
+        "salary": "salary",
+        "remote": true,
+        "date": "publication_date",
+        "tags": "tags"
+      },
+      "job_type": "full-time"
+    },
+    "remoteok": {
+      "enabled": true,
+      "type": "api",
+      "base_url": "https://remoteok.com/api",
+      "filter_mode": "local",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; JobSearchBot/1.0)"
+      },
+      "notes": "El feed se trae completo una vez y se filtra localmente por keywords (título/tags/descripción). El parámetro ?tags= espera tags atómicos, no frases. ToS: requiere atribución con link directo a la vacante.",
+      "fields_map": {
+        "id": "id",
+        "title": "position",
+        "company": "company",
+        "url": "url",
+        "description": "description",
+        "location": "location",
+        "salary": "salary",
+        "remote": true,
+        "date": "date",
+        "tags": "tags"
+      },
+      "job_type": "full-time"
+    },
+    "himalayas": {
+      "enabled": true,
+      "type": "api",
+      "base_url": "https://himalayas.app/jobs/api",
+      "filter_mode": "local",
+      "pagination": "offset",
+      "page_size": 20,
+      "max_pages": 5,
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; JobSearchBot/1.0)"
+      },
+      "notes": "Feed paginado (20/página vía offset). No filtra server-side (search/category se ignoran): se traen N páginas y se filtra localmente por keyword contra título + categories. Todas las vacantes son remotas. ToS: atribución + link a himalayas.app (se conserva en url); NO redistribuir a plataformas de terceros (LinkedIn/Google Jobs/etc.).",
+      "fields_map": {
+        "title": "title",
+        "company": "companyName",
+        "url": "guid",
+        "description": "description",
+        "location": "locationRestrictions",
+        "salary": "minSalary",
+        "date": "pubDate",
+        "tags": "categories"
+      },
+      "job_type": "full-time"
+    },
+    "arbeitnow": {
+      "enabled": true,
+      "type": "api",
+      "base_url": "https://www.arbeitnow.com/api/job-board-api",
+      "filter_mode": "local",
+      "pagination": "page",
+      "page_size": 100,
+      "max_pages": 3,
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; JobSearchBot/1.0)"
+      },
+      "notes": "Feed paginado (100/página vía page). Foco EU/DACH con muchos NO remotos: se filtra por remote==True + keyword (título + tags) localmente. ToS: uso libre, se agradece link de vuelta a arbeitnow.com (se conserva en url).",
+      "fields_map": {
+        "title": "title",
+        "company": "company_name",
+        "url": "url",
+        "description": "description",
+        "location": "location",
+        "remote": "remote",
+        "date": "created_at",
+        "tags": "tags"
+      },
+      "job_type": "full-time"
+    },
+    "jobicy": {
+      "enabled": true,
+      "type": "api",
+      "base_url": "https://jobicy.com/api/v2/remote-jobs",
+      "filter_mode": "server",
+      "search_param": "tag",
+      "params": {
+        "count": 50
+      },
+      "optional_params": ["geo", "industry"],
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; JobSearchBot/1.0)"
+      },
+      "notes": "Único con filtro server-side real: `tag` busca en título + descripción. Se consulta una vez por keyword (count máx 50) y se dedupe. geo/industry opcionales. ToS: atribución a jobicy.com (se conserva en url); NO redistribuir a plataformas de terceros.",
+      "fields_map": {
+        "id": "id",
+        "title": "jobTitle",
+        "company": "companyName",
+        "url": "url",
+        "description": "jobDescription",
+        "location": "jobGeo",
+        "salary": "salaryMin",
+        "date": "pubDate",
+        "tags": "jobIndustry"
+      },
+      "job_type": "full-time"
+    },
+    "indeed": {
+      "enabled": true,
+      "type": "mcp",
+      "provider": "claude_connector",
+      "mcp_tools": {
+        "search": "mcp__claude_ai_Indeed__search_jobs",
+        "details": "mcp__claude_ai_Indeed__get_job_details",
+        "company_research": "mcp__claude_ai_Indeed__get_company_data"
+      },
+      "search_params": {
+        "location": "${JOB_SEARCH_LOCATION}",
+        "country_code": "${JOB_SEARCH_COUNTRY}"
+      },
+      "output_format": "markdown",
+      "job_type": "full-time",
+      "notes": "Fuente principal desde 2026-07-06: conector oficial de Indeed vía MCP, disponible en Claude (no en Codex, donde el OAuth completa pero sesiones nuevas fallan con HTTP 403 invalid_client porque el MCP es beta Claude-Connector-only — ver `fallback`). `search_jobs` devuelve markdown, no JSON: el agente extrae company/role/url/location/salary de cada listado, arma un JSON array (mismo shape que `normalize_position` en fetch_jobs_indeed.py) y lo carga con `core/load_positions_bulk.py`. `get_company_data` (reviews/ratings/salarios reales de empleados) queda disponible para Workflow 06.",
+      "fallback": {
+        "type": "api_provider",
+        "provider": "scrappa",
+        "script": "core/fetch_jobs_indeed.py",
+        "base_url": "https://scrappa.co/api/indeed/jobs",
+        "auth": "api_key",
+        "api_key_env": "SCRAPPA_API_KEY",
+        "notes": "Usar solo si el conector de Indeed no está disponible en el entorno (p. ej. Codex). Requiere SCRAPPA_API_KEY en .env."
+      }
+    },
+    "linkedin": {
+      "enabled": true,
+      "type": "scraper",
+      "engine": "requests_bs4",
+      "base_url": "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
+      "search_url": "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keywords}&location={location}&f_WT=2%2C3&f_TPR=r2592000&start=0",
+      "params": {
+        "location": "${LINKEDIN_LOCATION}",
+        "f_WT": "2,3",
+        "f_TPR": "r2592000"
+      },
+      "page_size": 25,
+      "selectors": {
+        "job_list": "li div.base-card",
+        "title": "h3.base-search-card__title",
+        "company": "h4.base-search-card__subtitle",
+        "location": ".job-search-card__location",
+        "url": "a.base-card__full-link",
+        "date": "time"
+      },
+      "pagination": true,
+      "max_pages": 3,
+      "delay_ms": [3000, 6000],
+      "rate_limit_backoff_ms": 30000,
+      "job_type": "full-time",
+      "notes": "Usa el endpoint público 'jobs-guest' (HTML de tarjetas, sin login ni Playwright). f_WT=2,3 = remoto + híbrido (antes solo remoto: dejaba fuera roles publicados con ciudad/híbrido). f_TPR=r2592000 = últimos ~30 días (una ventana de solo 7 días descarta vacantes válidas de más de una semana). `location` es un NOMBRE de geografía (no un código de país) y sale de LINKEDIN_LOCATION; los resultados se filtran después por TARGET_REGION vía core/location_filters.py. Pagina de a 25 con start. Se rate-limitea (HTTP 429) tras ~10 páginas por IP."
+    }
+  },
+  "search_keywords_by_role": {
+    "automation_engineer": ["automation engineer", "automation consultant", "process automation", "workflow automation", "make.com automation", "n8n automation", "integration engineer"],
+    "product_ops": ["product operations", "product ops", "product engineer", "technical product manager", "product specialist", "product operations analyst"],
+    "ai_ops": ["AI operations", "AI ops", "AI consultant", "conversational AI", "chatbot operations", "LLM operations", "agentic engineer", "AI agent engineer", "conversational AI delivery", "applied AI engineer"],
+    "operations": ["operations automation", "digital operations", "business automation", "operations specialist"],
+    "freelance_automation": ["automation specialist", "workflow automation", "process automation consultant"],
+    "solutions_delivery": ["forward deployed engineer", "forward deployed product manager", "forward-deployed builder", "deployment strategist", "solutions engineer", "solutions consultant", "implementation specialist", "delivery engineer", "onboarding specialist", "customer solutions engineer"]
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "version": "2.0",
+  "salary_gate": {
+    "floor_usd_month": 3500,
+    "evaluation_basis": "lower_bound",
+    "unpublished_status": "A VALIDAR",
+    "description": "Salary is an eliminatory filter. Any position below the configured monthly USD floor is auto-discarded. If a range is published, the lower bound is evaluated. If no salary is published, the position is not discarded: it is flagged for validation before moving forward."
+  },
+  "score_threshold_auto_discard": 45,
+  "scale_max": 5,
+  "categories": [
+    {
+      "id": "EXCELENTE",
+      "min_score": 80,
+      "max_score": 100,
+      "recommended_action": "Apply immediately, prioritize over the rest."
+    },
+    {
+      "id": "BUENA",
+      "min_score": 60,
+      "max_score": 79,
+      "recommended_action": "Apply, preparing the submission well."
+    },
+    {
+      "id": "ACEPTABLE",
+      "min_score": 45,
+      "max_score": 59,
+      "recommended_action": "Apply only if no better options are in progress."
+    },
+    {
+      "id": "DESCARTAR",
+      "min_score": 0,
+      "max_score": 44,
+      "recommended_action": "Do not invest time applying."
+    }
+  ],
+  "criteria": [
+    {
+      "id": "profile_alignment",
+      "name": "Alineacion con el perfil",
+      "description": "Closeness of the role to the user's target roles (defined in their professional profile). Highest-weight criterion after the salary gate.",
+      "weight": 0.4,
+      "scale": "1-5",
+      "hints": {
+        "5": "Exact or near-exact match with one of the user's target roles.",
+        "4": "Very close role with a strong overlap in core responsibilities and skills.",
+        "3": "Related but partial fit; overlaps in some responsibilities or domain.",
+        "2": "Weak fit; mostly tasks outside the user's target direction.",
+        "1": "Misaligned with the search or requires a profile the user explicitly avoids."
+      }
+    },
+    {
+      "id": "remote_modality",
+      "name": "Modalidad remota",
+      "description": "Degree of real remote work and timezone compatibility from the user's location.",
+      "weight": 0.25,
+      "scale": "1-5",
+      "hints": {
+        "5": "Truly remote from the user's location with reasonable timezone overlap.",
+        "4": "Remote with compatible timezone/geographic restrictions, or occasional travel.",
+        "3": "Very flexible hybrid, or regional remote with minor compatibility doubts.",
+        "2": "Demanding hybrid, unclear remote policy, or frequent presence required.",
+        "1": "On-site, mandatory relocation, or incompatible timezone."
+      }
+    },
+    {
+      "id": "seniority_growth",
+      "name": "Seniority y crecimiento",
+      "description": "Real possibility of growing in responsibility and career, not just compensation.",
+      "weight": 0.2,
+      "scale": "1-5",
+      "hints": {
+        "5": "Level and responsibilities fit well, with a clear growth path toward the user's target direction.",
+        "4": "Good seniority match with relevant learning and probable growth.",
+        "3": "Reachable but demanding, or growth possible though not explicit.",
+        "2": "Seniority above/below the profile, or limited growth.",
+        "1": "Far too senior, deep-specialist, or career path misaligned."
+      }
+    },
+    {
+      "id": "company_stability",
+      "name": "Empresa y estabilidad",
+      "description": "Reputation, funding, verifiable track record and stability of the company.",
+      "weight": 0.15,
+      "scale": "1-5",
+      "hints": {
+        "5": "Trustworthy company, funded or profitable, with clear traction and verifiable reputation.",
+        "4": "Solid company in an aligned industry with positive signals.",
+        "3": "Valid company but limited information or moderate stability.",
+        "2": "Mixed signals, low transparency, or questionable traction.",
+        "1": "Clear negative signals, risky reputation, or unverifiable company."
+      }
+    }
+  ]
+}

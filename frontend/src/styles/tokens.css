@@ -1,0 +1,250 @@
+/* ============================================================
+   DESIGN TOKENS — the source of record for this UI's look, ported
+   1:1 from the Claude Design project that produced it (see
+   DESIGN_BRIEF.md). Dark, executive, flat, hairline borders, cyan
+   accent used sparingly.
+
+   This file is the design system: every screen styles itself with
+   var(--token) and inline styles, never hardcoded hex values or
+   Tailwind (DECISIONS #12). Retheme the app by editing here.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap");
+
+:root {
+  /* --- Base palette --- */
+  --carbon-black: #141414;
+  --graphite: #1c1c1c;
+  --deep-navy: #1a1a1a;
+  --slate-gray: #262626;
+  --steel-gray: #8a94a6;
+  --mist-gray: #e5e7eb;
+  --white: #ffffff;
+  --executive-cyan: #5c8a93;
+  --deep-teal: #33544f;
+  --signal-blue: #4c6e93;
+
+  /* --- Semantic surfaces --- */
+  --surface-page: var(--carbon-black);
+  --surface-raised: var(--graphite);
+  --surface-sunken: #0a0a0a;
+  --surface-card: var(--graphite);
+  --surface-card-alt: var(--deep-navy);
+  --surface-overlay: rgba(20, 20, 20, 0.86);
+
+  /* --- Borders --- */
+  --border-subtle: rgba(229, 231, 235, 0.08);
+  --border-default: rgba(229, 231, 235, 0.14);
+  --border-strong: rgba(229, 231, 235, 0.24);
+  --border-accent: rgba(92, 138, 147, 0.4);
+
+  /* --- Text --- */
+  --text-primary: var(--mist-gray);
+  --text-secondary: var(--steel-gray);
+  --text-tertiary: rgba(138, 148, 166, 0.65);
+  --text-inverse: var(--carbon-black);
+  --text-accent: var(--executive-cyan);
+  --text-on-accent: var(--carbon-black);
+
+  /* --- Accent --- */
+  --accent-primary: var(--executive-cyan);
+  --accent-secondary: var(--signal-blue);
+  --accent-tertiary: var(--deep-teal);
+
+  /* --- Interactive --- */
+  --interactive-default: var(--executive-cyan);
+  --interactive-hover: #6f9ca4;
+  --interactive-active: #4a7379;
+  --interactive-disabled: rgba(138, 148, 166, 0.32);
+
+  /* --- Status --- */
+  --status-positive: #34a88a;
+  --status-warning: #c99a3e;
+  --status-negative: #c25454;
+  --status-neutral: var(--steel-gray);
+
+  --gradient-accent-line: linear-gradient(90deg, var(--executive-cyan) 0%, var(--signal-blue) 100%);
+
+  /* --- Type --- */
+  --font-display: "Space Grotesk", "Aptos", Helvetica, Arial, sans-serif;
+  --font-body: "Inter", "Aptos", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 18px;
+  --text-lg: 22px;
+  --text-xl: 28px;
+  --text-2xl: 36px;
+  --text-3xl: 48px;
+  --text-4xl: 64px;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --tracking-tight: -0.02em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.12em;
+  --tracking-widest: 0.2em;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Spacing / radius / shadow --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* --- App-specific: score categories + pipeline status groups --- */
+  --score-exc: #34a88a;
+  --score-buena: #7fa6cf;
+  --score-acep: #c99a3e;
+  --score-desc: #c25454;
+  --score-none: #8a94a6;
+  --st-early: #8a94a6;
+  --st-prep: #5fa093;
+  --st-active: #7fa6cf;
+  --st-offer: #34a88a;
+  --st-terminal: #6b7280;
+}
+
+[data-theme="light"] {
+  --surface-page: #f5f3ef;
+  --surface-raised: #ffffff;
+  --surface-sunken: #efece6;
+  --surface-card: #ffffff;
+  --surface-card-alt: #faf9f6;
+  --surface-overlay: rgba(245, 243, 239, 0.88);
+  --border-subtle: rgba(20, 20, 20, 0.07);
+  --border-default: rgba(20, 20, 20, 0.12);
+  --border-strong: rgba(20, 20, 20, 0.22);
+  --border-accent: rgba(69, 112, 122, 0.45);
+  --text-primary: #1c1c1c;
+  --text-secondary: #5b6472;
+  --text-tertiary: rgba(91, 100, 114, 0.7);
+  --text-inverse: #ffffff;
+  --text-accent: #40707b;
+  --text-on-accent: #ffffff;
+  --accent-primary: #4a7a85;
+  --interactive-default: #4a7a85;
+  --interactive-hover: #3e6a74;
+  --interactive-active: #345b64;
+  --status-positive: #208168;
+  --status-warning: #a97f2d;
+  --status-negative: #b04a4a;
+  --score-exc: #1f8168;
+  --score-buena: #4c6e93;
+  --score-acep: #9a7426;
+  --score-desc: #b04a4a;
+  --score-none: #5b6472;
+  --st-early: #5b6472;
+  --st-prep: #33544f;
+  --st-active: #4c6e93;
+  --st-offer: #1f8168;
+  --st-terminal: #9ca3af;
+}
+
+/* --- Reset + base --- */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-page);
+}
+body {
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--interactive-hover);
+}
+::selection {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+button {
+  font-family: inherit;
+}
+
+/* --- Motion keyframes (from the design) --- */
+@keyframes jsCaret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes jsSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes jsPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes jsToastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes jsFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
+
+/* thin scrollbars to match the executive/flat aesthetic */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
