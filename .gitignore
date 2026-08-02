@@ -27,6 +27,13 @@ node_modules/
 frontend/dist/
 *.tsbuildinfo
 
+# The Claude Design prototype export. Deliberately NOT shipped: it renders the
+# author's name and resolves its components from a personal `_ds/` bundle that
+# isn't in this repo, so it can't render for anyone else anyway. The design
+# source of record is frontend/src/styles/tokens.css (DECISIONS #12). Keep your
+# own export here if you have one — it just never enters the tree.
+frontend/design-reference/
+
 # IDE / OS
 .vscode/
 .idea/

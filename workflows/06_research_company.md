@@ -1,12 +1,14 @@
 # Workflow 06 — Research a Company
 
 ## Objective
-Build a structured intelligence brief on a target company before applying or interviewing. The research powers CV personalization, cover letter tone, and interview preparation.
+Build a structured intelligence brief on a target company before applying or
+interviewing. The research powers CV personalization, cover-letter tone, and
+interview preparation.
 
 ## When to Use
 - Before generating application documents (Workflow 05, Step 1)
 - Before an interview (Workflow 07)
-- When the user wants to assess if a company is worth applying to
+- When the user wants to judge whether a company is worth applying to
 
 ---
 
@@ -14,115 +16,106 @@ Build a structured intelligence brief on a target company before applying or int
 
 | Input | Required |
 |---|---|
-| Company name | Yes |
+| Company name | Yes — it's the dedupe key, and it's never editable |
 | Company website URL | Yes |
-| Industry (optional) | No |
-| Company size (optional) | No |
+| Industry / size | No |
+| Target role title | Optional, but it unlocks the Indeed salary band |
 
 ---
 
 ## Execution
 
-Dos pasos: **el tool scrapea** (determinístico) y **yo (Claude Code) sintetizo** el brief.
+`POST /companies/{id}/research` → `202`. The `research_company` job scrapes
+deterministically, then the agent synthesizes the brief and writes it to
+`company.research_md` — a direct work-product write, no approval gate
+(DECISIONS #14).
 
-### Paso 1 — Scrapear el texto crudo
+### Paso 1 — Scrapeo determinístico
 
-```bash
-python core/research_company.py --scrape \
-  --company "<company_name>" \
-  --url "<company_website>" \
-  --output .tmp/<company>_raw.json
-```
+`core/research_company.py` baja el texto público: homepage, About, Careers,
+Blog, Google News. Es scraping plano, sin LLM.
 
-The tool scrapes: Homepage, About, Careers, Blog, Google News.
-
-### Paso 1b — Reviews y compensación (Indeed MCP)
+### Paso 1b — Reviews y compensación (Indeed MCP, opcional)
 
 ```
 mcp__claude_ai_Indeed__get_company_data
   companyName: "<company_name>"
   jobTitle: "<role_title>"
-  language: "es"
   location: { country: "<company_hq_country_iso2>", usState: null, usStateCode: null, usCity: null }
   knowledgeCategories: { metadata: true, ratings: true, salaries: true }
 ```
 
-- `jobTitle` es el rol al que the user está evaluando/aplicando (habilita la banda salarial). `country`
-  es el país de la sede/oferta de la empresa (no Argentina por default) — usar el país donde Indeed
-  probablemente tiene más cobertura de esa empresa (ej. "US" para una empresa con sede en EE.UU.).
-- Trae reviews verificadas de empleados, ratings (cultura, management, work-life balance, etc.) y
-  salario promedio por rol — datos que el scraper del Paso 1 no consigue.
-- **Empresas chicas / startups nuevas a veces no tienen datos en Indeed.** Si la respuesta viene vacía
-  o sin cobertura, omitir la sección 5 del brief sin bloquear el resto del research.
+- `jobTitle` es el rol que el usuario está evaluando (habilita la banda salarial).
+- `country` es el país de la sede/oferta de la empresa, **no** el del usuario ni
+  `JOB_SEARCH_COUNTRY` — usar donde Indeed probablemente tiene más cobertura de
+  esa empresa (ej. `US` para una empresa con sede en EE.UU.).
+- Trae reviews verificadas de empleados, ratings (cultura, management,
+  work-life balance) y salario promedio por rol — datos que el scraper del Paso
+  1 no consigue.
+- Requiere el conector de Indeed autorizado. Si no está, o si la empresa no
+  tiene cobertura, **omitir la sección 5 del brief y seguir**. No es bloqueante.
 
-### Paso 2 — Yo sintetizo el brief
+### Paso 2 — Síntesis
 
-Leo `.tmp/<company>_raw.json` + la respuesta del Paso 1b, redacto el research estructurado (secciones
-abajo) en Markdown y lo guardo en `.tmp/<company>_research.md`. Esto usa tu suscripción, no la API.
+El agente lee el texto scrapeado + la respuesta de Indeed y redacta el brief
+estructurado (secciones abajo). Corre por la suscripción del usuario, no por API.
 
-### Paso 3 — Guardar + registrar en Sheets
-
-```bash
-python core/research_company.py --save \
-  --company "<company_name>" \
-  --url "<company_website>" \
-  --md-file .tmp/<company>_research.md \
-  --industry "<industry>" \
-  --size "<size>" \
-  --add-to-sheets
-```
-
-Guarda en `output/companies/<company>/research.md` y registra en la hoja "Companies".
+**Regla de oro: separar lo verificado de lo inferido.** Un brief que presenta
+una suposición como hecho es peor que uno corto. Si la ronda de financiación no
+aparece en ninguna fuente, decilo — no lo estimes.
 
 ---
 
-## Output Report Sections
+## Secciones del brief
 
-The synthesized report (`output/companies/<company>/research.md`) contains:
-
-1. **Descripción General** — What they do, market, core product
-2. **Modelo de Negocio** — B2B/B2C, revenue model, key customers
-3. **Stack Tecnológico** — Technologies found publicly
-4. **Cultura y Valores** — Work style, remote policy, stated values
-5. **Reviews y Compensación (Indeed)** — Employee ratings (culture, management, work-life
-   balance), salary band for the target role. Omitir si Indeed no tiene cobertura de la empresa.
-6. **Desafíos Conocidos** — Challenges, pivots, focus areas from news
-7. **Por Qué Encaja el Perfil** — Specific connection points to the user's profile
-8. **Preguntas Estratégicas** — Smart questions for the interview
-9. **Fuentes Consultadas** — URLs scraped + Indeed (si aportó datos)
+1. **Descripción General** — qué hacen, mercado, producto principal
+2. **Modelo de Negocio** — B2B/B2C, modelo de ingresos, clientes clave
+3. **Stack Tecnológico** — tecnologías encontradas públicamente
+4. **Cultura y Valores** — estilo de trabajo, política de remoto, valores declarados
+5. **Reviews y Compensación (Indeed)** — ratings de empleados, banda salarial
+   para el rol objetivo. Omitir si no hay cobertura.
+6. **Desafíos Conocidos** — desafíos, pivots, foco actual según noticias
+7. **Por Qué Encaja el Perfil** — puntos de conexión concretos con el perfil
+8. **Preguntas Estratégicas** — preguntas buenas para la entrevista
+9. **Fuentes Consultadas** — URLs scrapeadas + Indeed (si aportó)
 
 ---
 
-## Using the Research
+## Using the research
 
-**For CV generation:** leo `output/companies/<company>/research.md` al redactar el CV — informa el
-Professional Summary y la selección de bullets.
+**CV (Workflow 05):** informa el Professional Summary y la selección de bullets.
 
-**For cover letter:** lo mismo al redactar la cover letter — para referenciar los desafíos/valores
-específicos de la empresa.
+**Cover letter (Workflow 05):** es de dónde sale la referencia específica a la
+empresa. Una cover letter que cita un desafío real de la sección 6 se lee
+distinto a una que parafrasea la homepage.
 
-**For interviews:** The "Por Qué Encaja el Perfil" and "Preguntas Estratégicas" sections feed directly into Workflow 07.
+**Entrevista (Workflow 07):** las secciones 7 y 8 alimentan directamente la prep.
 
 ---
 
-## Edge Cases
+## Edge cases
 
-**Scraping blocked (403 / captcha):** Some companies block scrapers. In that case:
-1. Visit the company's LinkedIn page manually and paste relevant text into chat
-2. I'll synthesize from that content instead
-3. Check Crunchbase or AngelList for funding/size info
+**Scraping bloqueado (403 / captcha).** Algunas empresas bloquean scrapers.
+Entonces: que el usuario pegue en el chat el texto de su LinkedIn, y sintetizá
+desde ahí; Crunchbase o AngelList sirven para funding/tamaño.
 
-**No website (startup in stealth):** Search for the company on LinkedIn, Crunchbase, or TechCrunch. Paste any findings into chat.
+**Sin sitio web (startup en stealth).** Buscar en LinkedIn, Crunchbase o
+TechCrunch y pegar los hallazgos en el chat.
 
-**Sin datos de Indeed (Paso 1b vacío):** común en startups chicas o muy nuevas. Omitir la sección
-5 del brief y seguir con el resto del research normalmente — no es un bloqueante.
+**Sin datos de Indeed.** Común en startups chicas o muy nuevas. Omitir la
+sección 5 y seguir normal.
 
-**Cached research exists:** si `output/companies/<company>/research.md` ya existe, reutilizalo en
-vez de volver a scrapear. Para refrescar, corré `--scrape` de nuevo y re-sintetizá.
+**Ya existe research.** Si `company.research_md` tiene contenido, reutilizalo en
+vez de volver a scrapear — cuesta una vuelta de agente. Re-correr el job lo
+sobrescribe, que es lo que se quiere para refrescarlo.
+
+**El nombre de la empresa está mal escrito.** `name` es la clave de dedup y
+**no** es editable por cambio propuesto. Si está mal, es un problema de datos a
+resolver por otro lado, no algo que se arregle acá.
 
 ---
 
 ## Output
 
-- `output/companies/<company>/research.md` — full structured brief
-- Google Sheets → "Companies" sheet: company record with research path
+- `company.research_md` — el brief estructurado completo
+- `industry`, `size`, `website` completados si el research los descubrió

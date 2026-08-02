@@ -1,18 +1,20 @@
-# Workflow 04 - Evaluate & Rank Positions
+# Workflow 04 — Evaluate & Rank Positions
 
 ## Objective
 
-Evaluate every `Discovered` position with the current opportunity evaluation system:
+Score positions against the **active scoring config**:
 
-1. Apply the salary gate first.
-2. Score only eligible or salary-unpublished positions across 4 weighted criteria.
-3. Assign a final score (0-100), category, recommended action, and rank.
+1. Apply the salary gate first — it is eliminatory, not a weighted criterion.
+2. Score eligible (and salary-unpublished) positions across the configured
+   criteria.
+3. Produce a final score (0-100), a category, and a recommended action.
 
-The goal is to spend application effort only on roles that combine salary, profile fit, remote feasibility, growth, and company stability.
+The goal is to spend application effort only on roles that combine salary,
+profile fit, remote feasibility, growth, and company stability.
 
 ## When to Use
 
-After Workflow 03 (discovery complete). Run in batch or individually on demand.
+After Workflow 03 (discovery complete). One position or in bulk.
 
 ---
 
@@ -20,202 +22,184 @@ After Workflow 03 (discovery complete). Run in batch or individually on demand.
 
 | Input | Source |
 |---|---|
-| Positions with status `Discovered` | Google Sheets |
-| Candidate profile | `context/professional_profile.md` |
-| Evaluation system + weights | `config/scoring_criteria.json` |
+| Positions to score | `positions` rows — usually `status = Discovered` |
+| Candidate profile | `profile_basics` + `profile_sections` (Workflow 01) |
+| Criteria, weights, thresholds | The **active** row in `scoring_configs` (`GET /scoring/config`) |
+
+> **Read the weights, don't assume them.** The numbers below are the *seeded
+> default*. The active config is versioned and the user can change it in a
+> `scoring` chat, so a running install may well differ. Always score against
+> what `GET /scoring/config` returns.
 
 ---
 
-## Salary Gate
+## Salary gate
 
-Salary is eliminatory, not part of the weighted average.
+Salary is eliminatory and sits outside the weighted average.
 
-- Floor: **USD 3.500/month equivalent**.
+- Floor: `salary_gate.floor_usd_month` in the active config (seeded default:
+  **USD 3.500/month** equivalent).
 - If a range is published, evaluate the **lower bound**.
-- If the published lower bound is below USD 3.500/month, mark the position as **DESCARTADA POR SALARIO** and do not calculate a score.
-- If salary is not published, do not discard. Mark as **A VALIDAR**, estimate market fit if possible, calculate the weighted score, and validate compensation before advancing.
+- Below the floor → **DESCARTADA POR SALARIO**, no score calculated.
+- Not published → do **not** discard. Mark **A VALIDAR**, calculate the
+  weighted score anyway, and confirm compensation before advancing.
 
-Contract type does not affect score. Relationship, contractor, freelance, and contract roles are all acceptable; record contract type as informational only.
+Contract type does not affect the score. Employment, contractor, freelance and
+contract roles are all acceptable; record the type as informational only.
 
 ---
 
-## Weighted Criteria
+## Weighted criteria (seeded default — verify against the active config)
 
-Use a 1-5 scale for each criterion.
+Each criterion is scored 1-5.
 
-| Criterion | Weight | What it measures |
+| Criterion | Default weight | What it measures |
 |---|---:|---|
-| `profile_alignment` | 40% | Closeness to Automation Engineer / AI Operations / Product Engineer / WhatsApp-Conversational AI. |
-| `remote_modality` | 25% | Real remote level and timezone compatibility with US/Europe overlap. |
-| `seniority_growth` | 20% | Real possibility to grow in responsibility and career. |
-| `company_stability` | 15% | Reputation, funding, trajectory, and verifiable company stability. |
-
-Formula:
+| `profile_alignment` | 40% | Closeness of the role to the user's target roles, as defined in their profile |
+| `remote_modality` | 25% | Real remote level and timezone compatibility |
+| `seniority_growth` | 20% | Real room to grow in responsibility and career |
+| `company_stability` | 15% | Reputation, funding, trajectory, verifiable stability |
 
 ```text
-Score = (profile_alignment*0.40 + remote_modality*0.25 + seniority_growth*0.20 + company_stability*0.15) / 5 * 100
+Score = Σ(criterion_score × weight) / scale_max × 100
 ```
 
----
+Weights must sum to 1.0 — the change applier enforces that invariant, so a
+proposal that breaks it is rejected rather than applied.
 
-## Categories
+## Categories (seeded default)
 
 | Category | Score | Recommended action |
 |---|---:|---|
-| EXCELENTE | 80-100 | Apply immediately, prioritize over the rest. |
-| BUENA | 60-79 | Apply with a well-prepared application. |
-| ACEPTABLE | 45-59 | Apply only if there are no better options in progress. |
-| DESCARTAR | <45 | Do not spend time applying. |
+| EXCELENTE | 80-100 | Apply immediately, prioritize over the rest |
+| BUENA | 60-79 | Apply with a well-prepared application |
+| ACEPTABLE | 45-59 | Apply only if nothing better is in progress |
+| DESCARTAR | <45 | Don't spend time applying |
 
 Additional marks:
-
-- **DESCARTADA POR SALARIO**: below USD 3.500/month floor. No score.
-- **A VALIDAR**: salary not published. Score is calculated, but compensation must be confirmed before moving forward.
-
-Auto-discard threshold: **score < 45** -> status set to `Rejected`.
+- **DESCARTADA POR SALARIO** — below the floor. No score.
+- **A VALIDAR** — salary not published. Scored, but compensation must be
+  confirmed before moving forward.
 
 ---
 
 ## Execution
 
-The evaluation is split in two steps: **the agent reasons** through salary/profile/company fit, and **the tool writes deterministically** to Sheets. No paid LLM API is used by this workflow.
+Evaluation is a **job**, not a chat turn:
 
-### Step 1 - List Positions To Evaluate
+- One position: `POST /positions/{id}/evaluate`
+- Many: `POST /positions/evaluate` with `{ "position_ids": [...] }`
+- From the UI: "Evaluate all found" on a search, or the bulk action on the
+  positions table
 
-```bash
-python core/evaluate_position.py --list-pending --status Discovered > .tmp/pending.json
-```
+Both return `202` with a job id and stream progress over SSE.
 
-This exports `Discovered` positions with id, company, role, salary, URL, location, type, and saved JD/notes.
+### How the work is split
 
-### Step 2 - Evaluate Salary Gate + Criteria
+The `evaluate_batch` handler calls the agent **once per position**, one-shot —
+no chat thread, no `proposed_changes` gate. Reading a job description and
+judging fit is reasoning; it writes the result straight onto the position
+(DECISIONS #14).
 
-Read each JD and create `.tmp/scores.json` using this structure:
+The agent supplies **only the judgement**: a 1-5 score per criterion with a
+short note, plus the salary-gate verdict. The arithmetic — weighted score,
+category, salary normalization — is done by
+`core/evaluate_position.py`'s pure functions, which are the reference
+implementation. Don't recompute the score yourself and don't round it.
+
+Expected shape from the agent, per position:
 
 ```json
-[
-  {
-    "position_id": "acme-automation-engineer-a1b2c3",
-    "salary_gate": {
-      "status": "PASS",
-      "evaluated_usd_month": 4200,
-      "salary_text": "USD 4.2k-5.5k/month",
-      "note": "Lower bound is above the USD 3.500/month floor."
-    },
-    "scores": {
-      "profile_alignment": {
-        "score": 5,
-        "note": "Automation role with APIs, process automation, and AI workflow ownership."
-      },
-      "remote_modality": {
-        "score": 4,
-        "note": "Remote LATAM with US timezone overlap."
-      },
-      "seniority_growth": {
-        "score": 4,
-        "note": "Mid-level responsibilities with clear growth into AI operations."
-      },
-      "company_stability": {
-        "score": 3,
-        "note": "Company looks valid, but funding and trajectory need more research."
-      }
-    },
-    "summary": "Strong automation/product-ops fit; company stability should be researched before applying.",
-    "action": ""
-  }
-]
+{
+  "salary_gate": {
+    "status": "PASS",
+    "evaluated_usd_month": 4200,
+    "salary_text": "USD 4.2k-5.5k/month",
+    "note": "Lower bound is above the configured floor."
+  },
+  "scores": {
+    "profile_alignment": { "score": 5, "note": "Automation role with APIs and AI workflow ownership." },
+    "remote_modality":   { "score": 4, "note": "Fully remote with workable timezone overlap." },
+    "seniority_growth":  { "score": 4, "note": "Mid-level scope with a clear path up." },
+    "company_stability": { "score": 3, "note": "Looks legitimate; funding and trajectory need research." }
+  },
+  "summary": "Strong automation/product-ops fit; research company stability before applying."
+}
 ```
 
-Salary gate values:
+Salary-gate values: `PASS` (published lower bound meets the floor), `FAIL`
+(below it), `UNKNOWN` (not published → A VALIDAR).
 
-- `PASS`: published lower bound meets or exceeds USD 3.500/month.
-- `FAIL`: published lower bound is below USD 3.500/month.
-- `UNKNOWN`: salary is not published; mark as A VALIDAR.
+### ⚠️ Evaluation does not change status
 
-### Step 3 - Write Scores + Ranking
+The handler writes the evaluation and appends a history event. It deliberately
+does **not** move the position through the pipeline — `Discovered` stays
+`Discovered` even at score 12. Status transitions happen only through
+`POST /positions/{id}/status`, so the user is always the one moving a position
+forward or rejecting it.
 
-```bash
-python core/evaluate_position.py --write-scores --data-file .tmp/scores.json
-```
-
-The tool:
-
-- Rejects salary failures without calculating score.
-- Computes weighted score 0-100 for salary-pass and salary-unknown roles.
-- Writes score, category, salary mark, criterion notes, and recommended action to `evaluation_notes`.
-- Sets `Rejected` for score <45.
-- Sets `Evaluating` for scored positions.
-- Re-ranks full-time and gig/freelance tracks separately.
-
-### View Ranking
-
-```bash
-python core/evaluate_position.py --show-ranking --min-score 45
-python core/evaluate_position.py --show-ranking --tipo gig
-python core/evaluate_position.py --rerank
-```
-
-Or check Google Sheets directly - "Positions" sheet, sorted by `score` descending.
+So `score_threshold_auto_discard` (default 45) is a **recommendation** you
+surface, not something the system acts on. Say "this scores below the discard
+threshold, want me to reject it?" — never report it as already rejected.
 
 ---
 
-## Reviewing The Ranking With The User
+## Reviewing the ranking with the user
 
-After batch evaluation, present the top 10-15 positions:
+`GET /positions/top` returns the ranked list; the UI shows it on the dashboard
+and the positions table. Present the top 10-15:
 
 ```text
 # | Score | Company             | Role                        | Status
 ---------------------------------------------------------------------------
-1 | 86    | Acme SaaS           | Automation Engineer         | Evaluating
-2 | 74    | Beta FinTech        | Product Operations Manager  | Evaluating
+1 | 86    | Acme SaaS           | Automation Engineer         | Discovered
+2 | 74    | Beta FinTech        | Product Operations Manager  | Discovered
 ```
 
-For each top position, the user decides:
+For each, the user decides:
 
-- **Shortlist** -> status updated to `Shortlisted` -> proceed to Workflow 05.
-- **Skip** -> status updated to `Rejected`.
-- **More info** -> fetch full JD/company details and re-evaluate.
-- **Validate salary** -> required before advancing any `A VALIDAR` position.
+- **Shortlist** → status update → proceed to Workflow 05
+- **Skip** → status update to `Rejected`
+- **More info** → research the company (Workflow 06), then re-evaluate
+- **Validate salary** → required before advancing any **A VALIDAR** position
 
-To update status:
-
-```bash
-python core/sheets_manager.py --action update_status --id <position_id> --status Shortlisted
-```
+Re-evaluating is safe and idempotent: it overwrites the evaluation on that
+position. It costs an agent turn per position, so don't re-run a whole batch to
+fix one.
 
 ---
 
-## Gig / Freelance Track
+## Edge cases
 
-Positions with `tipo: gig` or `tipo: freelance` are ranked separately. Contract type does not change the score.
+**Position has no description.** This is the big one — the description is what
+you actually read. Without it you're scoring a job title. Score conservatively,
+say so explicitly in the notes, and prefer fetching the description first
+(Indeed and LinkedIn both fetch descriptions by default for this reason).
 
-```bash
-python core/evaluate_position.py --show-ranking --tipo gig --min-score 45
-```
+**Annual or hourly compensation.** Convert to a monthly USD equivalent and
+evaluate the conservative lower bound. Document the conversion in
+`salary_gate.note`.
 
-`--write-scores` automatically re-ranks both tracks separately.
+**Salary not published.** `status: "UNKNOWN"`, mark A VALIDAR. Don't advance to
+document generation until compensation is confirmed or the user explicitly
+accepts the risk.
 
----
-
-## Edge Cases
-
-**Position has no description:** Fetch the full JD from the source URL before evaluating when possible. Without a JD, score conservatively and explain uncertainty in notes.
-
-**Salary range uses annual or hourly compensation:** Convert to monthly USD equivalent and evaluate the conservative lower bound. Document the conversion in `salary_gate.note`.
-
-**Salary is not published:** Use `salary_gate.status = "UNKNOWN"` and mark the role A VALIDAR. Do not move to document generation until compensation is confirmed or the user explicitly approves the risk.
-
-**Selector changes in scrapers:** If LinkedIn or another scraper returns empty descriptions or incomplete cards, check `.tmp/scraped_jobs.json` to verify the description field is populated.
+**The user changed the weights.** Old evaluations were computed under the old
+config and are not recomputed automatically. If a comparison looks off, check
+whether the positions were scored under different versions before concluding
+the ranking is wrong.
 
 ---
 
 ## Output
 
-- Google Sheets: score, rank, evaluation_notes, status updated.
-- Console: evaluation summary and updated ranking.
+- `position.evaluation` — per-criterion scores with notes, salary gate, final
+  score, category, summary
+- A `position_events` row recording the evaluation
+- Status unchanged (see the warning above)
 
 ---
 
 ## Next Step
 
-For each confirmed `Shortlisted` position: **Workflow 05 - Generate Documents**
+For each position the user shortlists → **Workflow 05 — Generate Documents**

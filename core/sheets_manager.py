@@ -13,23 +13,29 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
-# Env lives in data/credentials/.env (per .env.example); also honor a root .env
-# and already-exported vars. Loading both is harmless and order-independent here.
-load_dotenv("data/credentials/.env")
-load_dotenv()
+# Imported as `core.sheets_manager` (repo root on sys.path) and also run
+# directly (`python core/sheets_manager.py`, whose sys.path[0] is core/). Put
+# the repo root on the path so the `core.*` imports resolve either way — the
+# `core.google_auth` import in `get_sheets_service` needs it too.
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from core.env_config import load_env  # noqa: E402
+
+# Env comes from data/credentials/.env then a root .env, both resolved from the
+# repo root rather than the CWD (see core/env_config.py). This used to be a
+# CWD-relative `load_dotenv("data/credentials/.env")`, which silently loaded
+# nothing whenever the process started anywhere but the repo root.
+load_env()
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 # Spreadsheet id: accept either variable name (.env.example uses SPREADSHEET_ID).
 SPREADSHEET_ID = os.getenv("GOOGLE_SHEETS_JOB_TRACKER_ID") or os.getenv("SPREADSHEET_ID")
-# Credentials + token live under data/ (hard rule #1). Overridable via env.
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_PATH", "data/credentials/credentials.json")
-TOKEN_FILE = os.getenv("GOOGLE_TOKEN_PATH", "data/credentials/token.json")
+# Credential/token paths are NOT duplicated here: auth is delegated to
+# core/google_auth.py (one token, both scopes), which owns them.
 
 # Hoja 1: Positions
 POSITIONS_SHEET = "Positions"

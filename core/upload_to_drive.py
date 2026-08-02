@@ -29,6 +29,13 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+# Run directly (`py core/upload_to_drive.py`) sys.path[0] is core/, so the
+# `core.google_auth` import in `get_drive_service` would not resolve. Put the
+# repo root on the path; imported as `core.upload_to_drive` this is a no-op.
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 # Scopes/paths live in core/google_auth.py now (one token, under data/).
 # Kept as names for backwards compatibility with anything importing them.
 SCOPES = ["https://www.googleapis.com/auth/drive"]

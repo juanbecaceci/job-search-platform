@@ -1,12 +1,35 @@
-# Workflow 01 — Build / Update Professional Profile
+# Workflow 01 — Build / Update the Professional Profile
 
 ## Objective
-Maintain `context/professional_profile.md` as the authoritative source of truth for the user's professional data. This file feeds every other workflow in the system.
+Maintain the user's professional profile as the source of truth every other
+workflow reads: evaluation scores positions against it, document generation
+drafts CVs and cover letters from it, and interview prep works off it.
+
+The profile lives in the **database**, not in a file:
+
+| Where | What |
+|---|---|
+| `profile_basics` (one row, `target_id` `"1"`) | `full_name`, `headline`, `email`, `phone`, `location`, `linkedin_url`, `portfolio_url` |
+| `profile_sections` (many rows) | `slug`, `title`, `content_md`, `sort_order` — one per section (experience, skills, achievements, education, …) |
 
 ## When to Use
-- First time setup (profile doesn't exist yet)
-- New document with updated experience, certifications, or skills
-- the user provides corrections or additions in conversation
+- First-time setup (see **Workflow 00 — First Run** for the whole path)
+- The user has a newer CV, a new role, a new certification
+- The user corrects or adds something in conversation
+
+---
+
+## Three ways the profile changes — know which one you're in
+
+1. **CV import** — `POST /onboarding/import-cv` runs a job that extracts a PDF
+   and *proposes* basics + sections. The user approves them in the tray.
+2. **Chat (you)** — you propose edits with `proposed_changes`. You have no write
+   access; nothing you say changes the profile until it is approved.
+3. **The user's own form** — `/profile` writes directly, no approval step
+   (DECISIONS #19). The gate exists for *your* writes, not theirs.
+
+So never say "I've updated your profile". Say what you're proposing, and that it
+is waiting in the changes tray.
 
 ---
 
@@ -14,70 +37,94 @@ Maintain `context/professional_profile.md` as the authoritative source of truth 
 
 | Input | Source | Required |
 |---|---|---|
-| Source document | PDF, DOCX, or TXT in `context/raw/` | For document-based update |
-| Conversation notes | the user's verbal corrections/additions | For conversational update |
+| Current profile | The entity snapshot in this prompt — carries basics and every section **with its `id`** | Always |
+| A CV | A text-based PDF, uploaded in the wizard | For import-based updates |
+| Conversation | The user's corrections and additions | For chat-based updates |
 
 ---
 
 ## Steps
 
-### A. Document-Based Update
+### A. Import-based update
 
-1. Confirm the source document is in `context/raw/`
-2. Extract the raw text (determinístico, sin API):
-   ```
-   py core/parse_profile.py --input context/raw/<filename> --output .tmp/raw_profile.txt
-   ```
-   > **Nota (Windows):** en esta máquina Python se invoca con `py` (el launcher),
-   > **no** con `python`/`python3` — esos son alias del Microsoft Store que fallan.
-   > Python instalado: 3.14.x. Si el archivo tiene espacios en el nombre, poné la
-   > ruta entre comillas (ej: `"context/raw/Profile LinkedIn.pdf"`).
-3. Pasame el archivo `.tmp/raw_profile.txt` en la conversación. **Yo (Claude Code) estructuro
-   el perfil** y escribo `context/professional_profile.md` siguiendo las reglas del proyecto —
-   esto usa los tokens de tu suscripción, no la API.
-4. Output: `context/professional_profile.md` (overwrites previous version)
-5. **Validate** — check these sections are correct before proceeding:
-   - Datos Personales: name, email, location, salary target
-   - Logros Cuantificables: the flagship case's validated metrics are present, verbatim (never rounded up or embellished)
-   - Skills Técnicos: skill levels match exactly what the user declared — never inflate them
-   - Reglas para Generación de CV: all content rules defined by the user must be present
+1. The user uploads a PDF in the wizard. The job proposes the changes; you don't
+   run it.
+2. Help them read the proposals: what each section would add, and whether the
+   extraction misread anything (dates and job titles are the usual casualties).
+3. Re-import is idempotent — a section whose `slug` already exists is not
+   proposed again, so a second import cannot duplicate their profile.
 
-### B. Conversational Update
+### B. Chat-based update
 
-1. The user provides corrections or new information in chat
-2. Read current `context/professional_profile.md`
-3. Apply changes manually using the Edit tool
-4. Examples:
-   - New certification: add to "Certificaciones y Premios"
-   - New job: add to "Experiencia Laboral" with STAR bullets + metrics
-   - Updated salary target: update "Pretensión salarial" + scoring criteria
+1. Read the current profile from the entity snapshot, never from memory of an
+   earlier turn.
+2. Propose one change per section you're touching:
+   - rewrite a section → `update` on `profile_sections`, `target_id` = its id
+   - add a section → `create` on `profile_sections`, `target_id` null, `diff`
+     including at least a `slug` that doesn't collide with an existing one
+   - remove a section → `delete` on `profile_sections`, `target_id` = its id
+   - contact details / headline → `update` on `profile_basics`, `target_id` `"1"`
+3. Quote the existing text in `old` so the user sees a real diff.
 
 ---
 
-## Validation Checklist
+## Content rules (these are the point of the workflow)
 
-Before marking the profile as complete, verify:
-
-- [ ] Flagship case includes all of its validated metrics, verbatim
-- [ ] Awards and certifications are listed in Certificaciones
-- [ ] Skill levels match the user's declared levels (no inflation)
-- [ ] All CV generation content rules are present
-- [ ] Keywords ATS section is in English
-- [ ] Professional Summary is in English
-- [ ] Salary target matches the user's configured salary floor
+- **Never invent experience.** If the CV and the profile don't support a claim,
+  it doesn't go in — not even to match a job description better. A profile that
+  wins an interview it can't survive is worse than one that doesn't.
+- **Never inflate skill levels.** Use the level the user declared.
+- **Keep quantified achievements verbatim.** Don't round figures up, don't
+  restate "18%" as "nearly 20%", don't turn a specific result into a vaguer,
+  grander one.
+- **Prefer specific over impressive.** A concrete responsibility beats a
+  superlative.
+- **Write the professional summary and any ATS-keyword section in English**,
+  which is what the document templates and most parsers expect — regardless of
+  the language the rest of the conversation is in.
+- **Preserve the user's own wording** where it is already good. Rewriting
+  everything into one voice loses the detail that makes a profile credible.
 
 ---
 
-## Edge Cases
+## Validation checklist
 
-**Empty PDF output:** pypdf sometimes fails on scanned PDFs. Fallback: use Adobe Acrobat to export as TXT, then run with `--input context/raw/file.txt`
+Before treating the profile as ready for document generation:
 
-**`python` no encontrado (Windows):** usar `py` en lugar de `python`/`python3`. Los alias `python.exe`/`python3.exe` en `WindowsApps` son stubs del Microsoft Store y devuelven exit 49. `parse_profile.py` ya fuerza UTF-8 en stdout, así que el `print` final no rompe en consolas cp1252.
+- [ ] `full_name` is set and at least one section has real content — this is
+      literally what `GET /onboarding/status` derives `completed` from
+- [ ] Quantified achievements appear with their original figures
+- [ ] Skill levels match what the user declared — no inflation
+- [ ] Nothing present that the CV or the user didn't provide
+- [ ] Sections ordered sensibly via `sort_order`
+- [ ] Professional summary / ATS keywords in English
+- [ ] Salary expectation, if the user set one, matches the salary gate in the
+      active scoring config
 
-**Outdated profile:** If more than 3 months old, prompt the user to confirm all data is still accurate before running a job search.
+---
+
+## Edge cases
+
+**Scanned PDF.** Extraction returns almost nothing, and the import job fails on
+purpose rather than sending the agent a blank page. Ask for a text-based export.
+
+**Very large CV.** Long documents are fine — prompts go over stdin, not argv, so
+there is no command-line length limit to hit (DECISIONS #17).
+
+**Profile older than a few months.** Before a serious search round, ask the user
+to confirm it is still accurate. A stale profile quietly degrades every score.
+
+**The user wants a profile file.** There isn't one — the profile is database
+state. If they want a document out of it, that's document generation
+(**Workflow 05**), not this workflow.
 
 ---
 
 ## Output
 
-- `context/professional_profile.md` — updated and validated
+- `profile_basics` + `profile_sections` updated, through approved changes
+- Onboarding reads as complete once a name and one section with content exist
+
+## Next Step
+
+→ **Workflow 02 — Configure a Job Search Session**

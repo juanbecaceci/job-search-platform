@@ -21,8 +21,23 @@ positions) — see the item at the end of Stage 5 and DECISIONS #27/#28.
 geography is now configuration end to end (`TARGET_REGION` +
 `LINKEDIN_LOCATION` + `JOB_SEARCH_*`), with `worldwide` as a filter-nothing
 default. See that item below and DECISIONS #32.
-**Next: the remaining Pre-publish checklist items below** — the two that need a
-decision from Juan are `--strict-mcp-config` and `frontend/design-reference/`.
+**`--strict-mcp-config` was closed on 2026-07-31 as "not adopting"** — measured,
+not reasoned: the flag breaks the Indeed account connector, and the privacy
+premise behind the item turned out to be false (DECISIONS #34).
+**Two Pre-publish items closed on 2026-08-02**: the dotenv reconcile
+(`sheets_manager.py`/`google_auth.py` now go through
+`env_config.load_env()`/`repo_path()`, and the three Google modules import from
+either entry point), and `frontend/design-reference/` (**not shipped** —
+gitignored, DECISIONS #12 rewritten to name `tokens.css` as the design source of
+record). See both items below.
+**Next: the final secrets sweep is the only item left**, and it is the gate
+before adding a remote. Everything it checks passed as recently as 2026-07-31 —
+re-run it against the current tree, then push `stage5-complete` alone (see the
+git-state note below: `main` and the backup branch still carry the author's name
+in their history).
+⚠️ Uncommitted: the 2026-07-31 workflow migration plus the 2026-08-02 changes are
+all still in the working tree. Commit before the sweep so the sweep judges what
+would actually be published.
 
 ✅ Google is authorized (2026-07-29): one token with Sheets+Drive scopes in
 `data/credentials/token.json`, and `GOOGLE_DRIVE_FOLDER_ID` set in that folder's
@@ -35,15 +50,31 @@ back to its original 5 items.
 Google features are now proven end-to-end. `sheets_export_enabled` is ON in
 settings, so the "Export now" button in Settings works from the UI.
 
-Git state: the whole Stage 2–5 build is committed (branch `stage5-complete`,
-through `ce4c31a`). **No remote is configured** — nothing has been pushed to
-GitHub, pending Juan's go-ahead and the Pre-publish checklist below. The only
-untracked path is `frontend/design-reference/` (the design prototype; decide at
-pre-publish whether to ship it).
+Git state (re-verified 2026-08-02): **`stage5-complete` is a single root commit**
+`3dc75c5` — the squash already happened on 2026-07-31, and the pre-squash history
+is preserved locally on `backup/pre-squash-20260731` (10 commits, tip `097c68f`).
+`main` still points at the OLD history (`922e5e1`, 6 commits). **No remote is
+configured** — nothing has been pushed, pending Juan's go-ahead and the last
+Pre-publish item below.
+⚠️ Consequence for publishing: only `stage5-complete`'s tree is clean (the sole
+file naming the author is `LICENSE`, as intended). `main` and the backup branch
+still carry the author's name in their history — `3948e07` in 3 files, `ce4c31a`
+in 4. **Push `stage5-complete` alone** (e.g. `git push -u origin
+stage5-complete:main`); never `git push --all` / `--mirror`, which would publish
+both other refs. Working tree: `frontend/design-reference/` is now gitignored
+(verified via `git check-ignore`), leaving `workflows/00_first_run.md` as the
+only untracked path — a real new file from the 2026-07-31 session, to be
+committed, not ignored.
 
 ⚠️ Routes and job handlers are registered at **startup** — restart uvicorn after
 any change under `api/routers/` or `api/jobs/handlers/`, or a long-lived server
 404s on the new ones.
+
+✅ **The workflow corpus is fully migrated (2026-07-31).** All eight files now
+describe the platform rather than the pre-platform, file-and-Sheets flow. 131
+checks assert no workflow references `context/`, `output/cvs/`, `.tmp/` caches,
+`parse_profile.py`, Upwork, `sheets_manager --action` writes, `latam-argentina`
+or a `--market` flag, and that every module's prompt still assembles.
 
 Known follow-ups (not blockers): the runner skips geo/market filtering
 entirely. `core/location_filters.py` now offers `filter_by_region(positions,
@@ -229,8 +260,10 @@ Target: schema live, migration script working against Juan's real Sheets data
 Design imported from Juan's Claude Design project (`DesignSync` MCP, project
 c76fb8d1…): the brand design system (dark/executive, Carbon Black + cyan accent,
 Space Grotesk/Inter) + a full interactive React prototype of all 19 screens.
-A browsable copy is at `frontend/design-reference/design.html` (static reference,
-currently untracked; decide at pre-publish whether to keep it). Approach: real Vite+React+TS app, brand
+A browsable copy of the prototype lives at `frontend/design-reference/design.html`
+— local-only and gitignored as of 2026-08-02, and not a dependency of anything
+(DECISIONS #12; the design source of record is `frontend/src/styles/tokens.css`).
+Approach: real Vite+React+TS app, brand
 tokens ported 1:1, inline-styles+CSS-vars (NOT Tailwind — matches the delivered
 design), typed API client + React Query + SSE, screens rebuilt from the
 prototype and wired to the live API.
@@ -371,7 +404,8 @@ prototype and wired to the live API.
       Engineer | LATAM", "AI Engineer - LATAM"). Real `data/app.db` untouched
       throughout. Also corrected a stale note in `core/fetch_jobs_indeed.py`
       that claimed Indeed's MCP was Claude-Connector-only (DECISIONS #28).
-      NOT done: `--strict-mcp-config` on the agent subprocess (see pre-publish).
+      Deferred then, decided since: `--strict-mcp-config` is **not** used —
+      it breaks this very connector (measured 2026-07-31, DECISIONS #34).
 - [x] **Cloner onboarding for the `indeed` source DONE** (2026-07-30). README
       now has an "Optional: enable the Indeed source" section: account-connector
       users need nothing, everyone else runs one `claude mcp add` + `/mcp` to
@@ -447,40 +481,161 @@ region/role-agnostic and easy to onboard.
         keeps working — change it to a current key when convenient.
       · `search_run` is untouched and still never geo-filters (see its
         docstring), so app behaviour is unchanged; this affects the CLIs.
-- [ ] **Decide `--strict-mcp-config` for the agent subprocess.** Without it,
-      every MCP server the *cloner* has registered — Gmail, Drive, anything —
-      loads into the tool space of the agent this platform spawns. For a
-      public repo that's a real surprise and a privacy question, not just a
-      reproducibility one. Passing it (plus `--mcp-config` naming only the
-      servers the platform needs) makes cloner behaviour deterministic and
-      scoped. Deferred from the 2026-07-30 Indeed work as a separate call.
-- [ ] **Onboarding assets for cloners.** Author the workflow / skills / globals
-      that walk a new user through first run (env + Google creds optional, CV
-      import, first search). Ties into the Stage 5 onboarding wizard.
-- [ ] **Reconcile core dotenv loading.** ↳ MOSTLY DONE 2026-07-31, as a
-      prerequisite of the item above: without it `TARGET_REGION` would have been
-      genericized but inert (the fetchers never read `data/credentials/.env`,
-      which is where the README tells users to put it). New `core/env_config.py`
-      exposes `load_env()` — `data/credentials/.env` then a root `.env`, both
-      resolved from the repo root, idempotent — and `fetch_jobs_api.py`,
-      `scrape_jobs.py`, `fetch_jobs_indeed.py` and `load_positions_bulk.py` now
-      get it by importing `env_config`. WHAT REMAINS: `sheets_manager.py` and
-      `google_auth.py` still do their own two-line load with **CWD-relative**
-      paths (`load_dotenv("data/credentials/.env")`) — correct only when the
-      process starts at the repo root, the same trap as DECISIONS #31. Point
-      them at `env_config.load_env()`.
-- [ ] **Decide on `frontend/design-reference/`.** The Claude Design prototype
-      (`design.html`, 220K) is the only untracked path left. Either commit it as
-      the design source of record (it's what DECISIONS #12 points at) or drop it
-      and remove the reference.
-      ↳ INSPECTED 2026-07-30, and it can't be committed as-is: it carries
-      personal data — renders the author's full name in the sidebar and
-      references `_ds/<author-name>-design-system-<uuid>/…` stylesheets 55
-      times (grep the file for the name to see them). It is
-      also broken standalone (those `_ds/` assets and `./support.js` aren't in
-      the repo, so it won't render). So the real choice is: genericize the
-      name + vendor the missing assets, or drop it and point DECISIONS #12 at
-      `frontend/src/styles/tokens.css` as the design source of record.
+      · ↳ GAP CLOSED 2026-07-31: the original sweep **excluded `workflows/`**
+        (CLAUDE.md rule #5 is about their language, not their content), and they
+        still carried `markets = Argentina-LATAM remote` as a documented default
+        plus the renamed flags (`--market latam-argentina`, `--location
+        Argentina`, `--linkedin-location Argentina`, `--jobicy-geo latam`,
+        `country_code: "AR"`). All now read from `TARGET_REGION` /
+        `JOB_SEARCH_*` / `LINKEDIN_LOCATION`. A check asserts no workflow
+        contains `latam-argentina` or a `--market ` flag.
+- [x] **`--strict-mcp-config` DECIDED 2026-07-31: not adopting** (DECISIONS
+      #34). The item existed on a privacy premise that measurement disproved,
+      and the flag carries a measured cost. Both runs are below; don't reopen
+      this without a new fact.
+      ↳ **MEASURED 2026-07-31 — the flag breaks the Indeed account connector.**
+      Behavioural A/B through the real `fetch_indeed` path, same call twice,
+      only the flag differing: baseline returned **10 positions in 37.8s**;
+      with `--strict-mcp-config` it raised `McpSourceUnavailable` in 11.9s
+      ("Indeed search_jobs MCP tool is not registered or available in this
+      environment"). So DECISIONS #29's corollary is now measured, not
+      inferred: the flag ignores claude.ai **account** connectors, and adopting
+      it forces the `.mcp.json` path that #29 rejected.
+      ⚠️ Correction to the original framing above: asking a headless run to
+      list its tools returned **31 built-ins and zero `mcp__` entries**, in the
+      plain no-flag configuration — yet Indeed works in that same
+      configuration. So MCP tool definitions are evidently *not* sitting in the
+      visible tool list by default, and the "every connector loads into the
+      tool space / costs tokens every turn" claim is **unsupported**. What is
+      proven is only that they are *reachable*.
+      ↳ **EXPOSURE MEASURED 2026-07-31 — there is none. Recommend closing this
+      item as "not adopting".** Ran Gmail (`list_labels`) and Drive
+      (`search_files`) through `run_agent_text`, the same path every handler
+      uses, in both configurations — with **no** `--allowedTools` (chat,
+      `evaluate_batch`, `generate_document`, `research_company`, `import_cv`)
+      and with the Indeed allowlist (`fetch_indeed`). All four returned
+      **permission-denied**, e.g. *"Permission to call
+      `mcp__claude_ai_Gmail__list_labels` was not granted in this
+      non-interactive session"*. So the headless default-deny described in
+      DECISIONS #27 is already doing the containment: a connector that isn't on
+      the allowlist cannot be called, allowlist or no allowlist.
+      Net: `--strict-mcp-config` buys **no** privacy that default-deny doesn't
+      already provide, and measurably breaks Indeed. The only residual argument
+      is determinism/token weight of loaded definitions, which is not worth
+      breaking a working source for.
+      ⚠️ METHOD NOTE, because the first two attempts produced a confident wrong
+      answer: asking the agent "do you have tool X?" returns ABSENT **even for
+      Indeed**, which provably works — self-report is not a valid instrument
+      here. A probe only works when it is **task-shaped and carries a system
+      prompt** (that is what `build_indeed_search_prompt` supplies and what
+      `--append-system-prompt` delivers). Every probe in this area must be
+      validated against Indeed as a known-reachable control before its result
+      is believed.
+- [x] **Onboarding assets for cloners DONE** (2026-07-31, 45 checks).
+      · **New `workflows/00_first_run.md`** — the first-run SOP: what the agent
+        can and cannot do (it proposes, it can't edit `.env`), setting the four
+        market variables, agent-CLI reachability, the CV import and its approval
+        step, optional Google, a deliberately small first search, and evaluation
+        as a separate step. Ends with a troubleshooting table of the traps a
+        first run actually hits (7-day dashboard window, skipped-not-failed MCP
+        source, LinkedIn 429, restart-after-new-routes, PDF-only upload).
+      · **`workflows/01_build_profile.md` rewritten.** It still described the
+        old private-repo flow — `context/professional_profile.md`,
+        `core/parse_profile.py`, "apply changes with the Edit tool" — none of
+        which exists here, and it was being injected into the `profile` and
+        `onboarding` chats. Now describes `profile_basics`/`profile_sections`,
+        the three ways the profile changes (import proposes / chat proposes /
+        the user's form writes directly, DECISIONS #19), and keeps the content
+        rules worth keeping (never invent experience, never inflate skills,
+        quantified achievements verbatim).
+      · **Wired**: `_MODULE_WORKFLOWS["onboarding"]` is now
+        `["00_first_run.md", "01_build_profile.md"]` — first-run SOP first,
+        since a new cloner's problem is setup, not phrasing.
+      · **README** gained a "Your first run" section (5 steps + the PDF-only
+        constraint), and points at the workflow so the in-app chat and the docs
+        say the same thing.
+      · ⚠️ Found while doing it: the CV upload is **PDF only** (422 otherwise) —
+        the wizard's `accept` and the router agree, but nothing said so to a
+        user whose CV is a DOCX.
+      · **Workflows `03`–`07` migrated too** (same day). They described the
+        pre-platform flow — intermediate files under `.tmp/`, a `context/`
+        directory that doesn't exist here, `output/cvs/…` paths that would
+        violate hard rule #1, Google Sheets as the system of record, and Upwork
+        as a source. Now: `03` documents both paths (the `search_run` job vs the
+        standalone CLIs) and keeps the operational knowledge worth keeping
+        (per-source filtering mechanics, the anti-429 levers, keyword strategy);
+        `04` reads weights from the **active scoring config** instead of
+        hardcoding 40/25/20/15, and states that evaluation **does not change
+        status**; `05` documents the real draft→edit→export→upload job chain
+        writing to `data/documents/`; `06` and `07` follow the same treatment.
+        Two corrections the old text got outright wrong: the evaluator was
+        documented as setting `Rejected`/`Evaluating` (it deliberately doesn't —
+        transitions are only `POST /positions/{id}/status`), and dedupe was
+        documented as `company+role+url` (URL is exactly what it must not use).
+- [x] **Reconcile core dotenv loading DONE** (2026-08-02, 11 checks; the
+      2026-07-31 half is below). `sheets_manager.py` and `google_auth.py` now
+      call `env_config.load_env()` instead of their own CWD-relative
+      `load_dotenv("data/credentials/.env")`.
+      · **The bug was real, not theoretical** — measured against the HEAD
+        version from a CWD other than the repo root: `SPREADSHEET_ID` came back
+        `None` and `TOKEN_FILE` resolved to a `data/credentials/token.json`
+        that doesn't exist there. After the change both resolve from the repo
+        root. Nothing broke in practice only because every documented entry
+        point happens to start at the root.
+      · **Same trap, second instance**: `google_auth.py`'s `CREDENTIALS_FILE` /
+        `TOKEN_FILE` defaults were CWD-relative strings too. New
+        `env_config.repo_path()` rebases a relative path on the repo root and
+        passes an absolute env override through untouched; both constants are
+        now absolute `Path`s. `sheets_manager.py`'s duplicate copies of those
+        two constants were dead (auth is delegated to `google_auth.py`) and
+        were removed, along with three unused auth imports.
+      · **Found while doing it**: `sheets_manager.get_sheets_service` and
+        `upload_to_drive.get_drive_service` import `core.google_auth`, which
+        only resolves when the **repo root** is on `sys.path` — but running
+        them as documented (`python core/sheets_manager.py`) puts `core/`
+        there instead, so both CLIs raised `ModuleNotFoundError: No module
+        named 'core'`. Each of the three Google modules now puts the repo root
+        on `sys.path` itself rather than trusting its caller (`api/routers/
+        positions.py` imports `core.sheets_manager` with no path fixup, so the
+        module can't rely on one).
+      · VERIFIED 11/11 from a foreign CWD, both entry-point shapes: env loaded
+        and token found in package mode; the three CLIs importable and reaching
+        auth (not `ModuleNotFoundError`) in standalone mode; an absolute
+        `GOOGLE_TOKEN_PATH` override honoured as given; `api.main` +
+        `positions` + `sheets_export` + `scripts/authorize_google.py` import
+        clean; the five sibling-import CLIs unregressed. No Google API call and
+        no writes — read-only checks.
+      ↳ The 2026-07-31 half, done as a prerequisite of the item above: without
+      it `TARGET_REGION` would have been genericized but inert (the fetchers
+      never read `data/credentials/.env`, which is where the README tells users
+      to put it). New `core/env_config.py` exposes `load_env()` —
+      `data/credentials/.env` then a root `.env`, both resolved from the repo
+      root, idempotent — and `fetch_jobs_api.py`, `scrape_jobs.py`,
+      `fetch_jobs_indeed.py` and `load_positions_bulk.py` get it by importing
+      `env_config`.
+- [x] **`frontend/design-reference/` DECIDED 2026-08-02: not shipped.** Juan
+      chose to drop it rather than genericize it. It is now gitignored (the
+      local copy stays browsable; it just can't enter the tree), and
+      DECISIONS #12 was rewritten to name `frontend/src/styles/tokens.css` as
+      the design source of record with `DESIGN_BRIEF.md` for intent — the repo
+      no longer depends on the prototype at all.
+      ↳ Why not genericize (re-inspected 2026-08-02, exact counts):
+      · The author's name appears **55 times**, and only **1** is the cosmetic
+        one (the sidebar label at `design.html:56`). **47** are inside
+        `component-from-global-scope="<Name>DesignSystem_302711.Button|StatCard|…"`
+        — the JS global namespace every component resolves through, defined by
+        a bundle we don't have — and **7** are `_ds/<name>-design-system-<uuid>/`
+        asset paths. Renaming means editing the bundle that defines the name.
+      · It is broken standalone, and not cosmetically: neither `_ds/` nor
+        `./support.js` exists anywhere in the repo (verified), and the missing
+        `_ds_bundle.js` is what defines the `<x-import>` custom elements while
+        the 6 missing CSS files hold the tokens. The file has exactly **one**
+        inline `<style>` block, so a cloner opening it gets an unstyled
+        skeleton with no components. Vendoring would require re-exporting
+        `_ds/` from the Claude Design project.
+      · ⚠️ CORRECTION to the 2026-07-30 note this replaces: it read
+        "references `_ds/…` stylesheets 55 times". The 55 is the total name
+        count; the `_ds/` references are 7.
       ⚠️ `scripts/check_no_secrets.py` did NOT flag this — it looks for
       credentials/tokens/DB files, not personal names. Hard rule #6 (grep for
       names/employers before committing) is a manual step; don't treat a green
@@ -489,6 +644,18 @@ region/role-agnostic and easy to onboard.
       `python scripts/check_no_secrets.py`; `git status --ignored` shows `data/`
       ignored; skim tracked files for personal data (only `LICENSE` should name
       the author).
+      ⚠️ **Deliberately last, and deliberately still open** — everything below
+      already passed on 2026-07-31, but this is the gate, not a task. It is now
+      the ONLY open item. Re-run it after committing the working tree (so it
+      judges what would actually be published) and after any further doc edits;
+      tick it only immediately before adding a remote.
+      · `frontend/design-reference/` no longer feeds into this: it was decided
+        2026-08-02 and gitignored, so the path can't enter the tree
+        (`git check-ignore` verified). `check_no_secrets.py` exits 0 on the
+        current tree.
+      · What is left to judge is the 2026-07-31 workflow migration + the
+        2026-08-02 changes, all still uncommitted, plus `workflows/00_first_run.md`
+        (untracked, to be committed).
       ↳ CODE/UI IS CLEAN as of 2026-07-31. Both previously-found files are
       fixed, and the mechanical checks all pass (no tracked file under `data/`,
       `check_no_secrets.py` exit 0, `data/` shows ignored, no tracked
@@ -521,9 +688,15 @@ region/role-agnostic and easy to onboard.
       Verify with:
       `git ls-files | while read f; do grep -ilE "<employer>|<folder>|<cv-size>" "$f"; done`
       → only `LICENSE` should match a personal identifier.
-      ⚠️ **The name is also already in committed history** (`cd2ee06` 1 file,
-      `3948e07` 3, `ce4c31a` 4 — incl. an earlier `PROGRESS.md`). Cleaning the
-      working tree is therefore NOT enough: since no remote exists yet, decide
-      before adding one whether to squash the branch into a single clean commit
-      or accept the name in history. DECISIONS #7 kept this history free of the
-      *private repo's* data, but not of the author's own name.
+      ↳ THE HISTORY QUESTION IS SETTLED — re-verified 2026-08-02. The branch
+      was squashed on 2026-07-31: `stage5-complete` is now a single **root**
+      commit (`3dc75c5`, no parents), and its tree names the author only in
+      `LICENSE`. The old history survives locally on
+      `backup/pre-squash-20260731` (10 commits) and on `main` (6 commits,
+      `922e5e1`), where the name IS still present (`3948e07` 3 files,
+      `ce4c31a` 4). So the remaining risk is not the tree, it is **which refs
+      get pushed**: push `stage5-complete` alone
+      (`git push -u origin stage5-complete:main`), and never `git push --all`
+      or `--mirror`. Decide separately whether to keep the backup branch at all
+      once the repo is public. DECISIONS #7 kept this history free of the
+      *private repo's* data; this is about the author's own name.

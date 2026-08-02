@@ -66,13 +66,21 @@ This file exists so tokens don't get spent re-deriving conclusions already reach
     active per parent" at the service layer, not with a DB constraint.
 
 12. **The frontend styles with inline styles + CSS custom properties, NOT
-    Tailwind** (despite DESIGN_BRIEF.md saying "React + Tailwind"). The delivered
-    Claude Design output (`frontend/design-reference/design.html`) is built
-    entirely with inline styles referencing brand CSS variables, so the React
-    app ports that 1:1 (`frontend/src/styles/tokens.css` holds the tokens;
-    components use `style={{…}}` with `var(--…)`). Matching the delivered design
-    exactly beat re-deriving it in a Tailwind theme. Don't add Tailwind later
-    "to clean it up" — it would fork the styling system from the design source.
+    Tailwind** (despite DESIGN_BRIEF.md saying "React + Tailwind"). The design
+    delivered by the Claude Design session was built entirely with inline styles
+    referencing brand CSS variables, so the React app ports that 1:1. Matching
+    the delivered design exactly beat re-deriving it in a Tailwind theme. Don't
+    add Tailwind later "to clean it up" — it would fork the styling system from
+    the design source.
+    **`frontend/src/styles/tokens.css` is the design source of record**, with
+    `DESIGN_BRIEF.md` for the intent behind it. The original prototype export
+    (`frontend/design-reference/design.html`) is **not shipped** and this repo
+    does not depend on it (decided 2026-08-02, gitignored): it renders the
+    author's name in 55 places — mostly the `<Name>DesignSystem_302711.*` global
+    namespace its components resolve through — and it loads its tokens and
+    component bundle from a personal `_ds/…` directory that was never part of
+    this repo, so it renders as an unstyled skeleton for anyone else. Retheming
+    means editing `tokens.css`; the running app is the reference.
 
 13. **The agent CLI binary is resolved via `AGENT_CLI_PATH` (default `claude`
     on PATH), invoked as a plain subprocess.** No API key (see #10). Because
@@ -273,9 +281,10 @@ This file exists so tokens don't get spent re-deriving conclusions already reach
     already had Indeed connected in their own agent CLI account — the opposite
     of the intent. The README documents a one-line `claude mcp add` instead, so
     users with an account connector change nothing and users without one opt in
-    explicitly. Corollary: this is also why adopting `--strict-mcp-config`
-    (open pre-publish item) is not free — it would force the `.mcp.json` path
-    and reintroduce exactly this collision.
+    explicitly. Corollary: this is also why `--strict-mcp-config` is not free —
+    it would force the `.mcp.json` path and reintroduce exactly this collision.
+    That corollary was measured on 2026-07-31 and settled the question: the
+    flag is **not** adopted (see #34).
 
 30. **Indeed descriptions are fetched in the same agent turn as the search, and
     Indeed URLs are never treated as identity.** Two properties of Indeed's MCP
@@ -347,3 +356,33 @@ This file exists so tokens don't get spent re-deriving conclusions already reach
     is reversible, not to be shared. The author's name stays in `LICENSE` and in
     commit authorship metadata, which is normal for a repo owner and was an
     explicit choice, not an oversight.
+
+34. **`--strict-mcp-config` is NOT used on the agent subprocess.** The platform
+    spawns the CLI with no MCP scoping flags, and inherits whatever servers the
+    cloner has registered. That was an open pre-publish item on the theory that
+    a cloner's connectors — Gmail, Drive — leak into the tool space of an agent
+    this platform spawns. Two measurements on 2026-07-31 closed it the other
+    way. **The cost is real:** the same `fetch_indeed` call returned 10
+    positions in 37.8s normally and `McpSourceUnavailable` in 11.9s with the
+    flag added — it ignores claude.ai *account* connectors, so adopting it
+    forces the `.mcp.json` path that #29 already rejected. **The benefit is
+    not:** Gmail (`list_labels`) and Drive (`search_files`), driven through
+    `run_agent_text` both with and without an allowlist, came back
+    permission-denied every time ("permission … not granted in this
+    non-interactive session"). The headless default-deny of #27 already
+    contains them — the allowlist is what lets Indeed through, and nothing else
+    gets through without being on it. So the flag buys no privacy that already
+    exists and breaks a working source. What survives as an argument is only
+    determinism and the token weight of loaded tool definitions, which does not
+    justify the breakage. Reopen only with a new fact — e.g. if headless stops
+    defaulting to deny, or if a handler starts passing a broad allowlist.
+
+    **Corollary on method, which cost two wrong answers before the right one:**
+    do not measure agent tool availability by asking the agent. "Do you have
+    tool X?" returned a confident ABSENT *for Indeed*, in the exact
+    configuration where `fetch_indeed` works. MCP tools resolve on demand, so a
+    valid probe must be **task-shaped and carry a system prompt** (what
+    `build_indeed_search_prompt` supplies and `--append-system-prompt`
+    delivers) — and must be validated against Indeed as a known-reachable
+    control before its answer is believed. A probe that cannot see a connector
+    proven to be there is measuring nothing.

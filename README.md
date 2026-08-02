@@ -68,7 +68,33 @@ python -m uvicorn api.main:app --port 8000     # API + Swagger at /docs
 cd frontend && npm run dev                     # SPA
 ```
 
-Then open **http://localhost:5173** and the first-run wizard will walk you through importing your CV. Google Sheets/Drive are optional — run `python scripts/authorize_google.py` once if you want the export mirror and document upload.
+Then open **http://localhost:5173**. Vite binds `localhost`, so `127.0.0.1:5173` won't load.
+
+### Your first run
+
+The wizard at `/onboarding` walks you through it, and the in-app chat knows this
+path too — it reads [`workflows/00_first_run.md`](workflows/00_first_run.md), so
+you can ask it "why did my search return nothing?" and get an answer grounded in
+how this actually works. In short:
+
+1. **Set your market** before searching anything — see the section below. The
+   defaults are neutral, which means they're almost certainly not yours.
+2. **Import your CV** in the wizard. **PDF only**, and it has to be a text PDF —
+   a scanned image has no extractable text and the import fails on purpose
+   rather than guessing. Export from Word/Docs to PDF if needed.
+3. **Approve the proposals.** The import doesn't write your profile; it proposes
+   sections you approve in the changes tray. Re-importing is safe — a section
+   that already exists won't be proposed twice.
+4. **Run one small search** with the five free API sources. They need no
+   accounts and return in seconds. Add LinkedIn and Indeed once that works.
+5. **Evaluate the results** — discovery and scoring are separate steps. Use
+   "Evaluate all found" on the search.
+
+Scoring starts from generic seeded criteria, so your first ranking is a starting
+point, not an opinion. Tune the weights in a `scoring` chat once you've seen it
+rank real jobs.
+
+Google Sheets/Drive are optional — run `python scripts/authorize_google.py` once if you want the export mirror and document upload. Skipping it costs you nothing else.
 
 ### Set your market
 
@@ -169,7 +195,8 @@ See `PLATFORM_SPEC.md` for the complete design contract.
 - [x] **Stage 4** — Agent adapter (chat, proposed-change approval flow, per-module memory)
 - [x] **Stage 5** — Web UI integration + onboarding wizard
 - [x] **Pre-release** — configurable search geography (no region baked into the code)
-- [ ] **Pre-release** — first-run onboarding docs, scoped MCP config, final secrets sweep
+- [x] **Pre-release** — first-run guide + agent workflows migrated to the platform
+- [ ] **Pre-release** — final secrets sweep, design-source decision
 
 ## Privacy & safety
 

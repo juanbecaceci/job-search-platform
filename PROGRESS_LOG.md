@@ -7,6 +7,85 @@
 
 ---
 
+- 2026-08-02 — Closed `frontend/design-reference/`: **not shipped**. Juan chose
+  dropping it over genericizing, once the inspection showed the cost: 55 name
+  occurrences of which only 1 is the cosmetic sidebar label — 47 are the
+  `<Name>DesignSystem_302711.*` JS global namespace every component resolves
+  through, 7 are `_ds/` asset paths — and the bundle that defines that namespace
+  isn't in the repo, so the file renders as an unstyled skeleton anyway.
+  Gitignored (Juan keeps the local copy), DECISIONS #12 rewritten to name
+  `frontend/src/styles/tokens.css` as the design source of record. Corrected the
+  old note's "references `_ds/…` 55 times" — that count was the name, not the
+  asset refs. Found while updating the git-state note: **the squash already
+  happened on 2026-07-31** — `stage5-complete` is a single root commit whose only
+  name-bearing file is `LICENSE`, while `main` (6 commits) and
+  `backup/pre-squash-20260731` (10) still carry it in history. So the last item's
+  history question is settled and the live risk is which refs get pushed. Next:
+  commit the working tree, then the final secrets sweep.
+- 2026-08-02 — Closed the "reconcile core dotenv loading" pre-publish item.
+  `sheets_manager.py` + `google_auth.py` now call `env_config.load_env()`
+  instead of a CWD-relative `load_dotenv("data/credentials/.env")`. Measured the
+  bug first against HEAD, from a CWD outside the repo: `SPREADSHEET_ID` was
+  `None` and the token path pointed at a file that wasn't there. Two things the
+  item didn't anticipate: `google_auth.py`'s `CREDENTIALS_FILE`/`TOKEN_FILE`
+  defaults had the same CWD bug (new `env_config.repo_path()` fixes them, and
+  `sheets_manager.py`'s dead duplicates of both are gone), and the Sheets/Drive
+  CLIs were **already broken standalone** — they import `core.google_auth`,
+  which needs the repo root on `sys.path`, but `python core/sheets_manager.py`
+  puts `core/` there, so both raised `ModuleNotFoundError: No module named
+  'core'`. The three Google modules now self-bootstrap the root rather than
+  trusting the caller, because `api/routers/positions.py` imports one of them
+  with no path fixup. Verified 11/11 from a foreign CWD across both entry-point
+  shapes; read-only, no Google call. Next: `frontend/design-reference/` (needs
+  Juan's decision), then the final secrets sweep.
+- 2026-07-31 — Measured the `--strict-mcp-config` pre-publish item instead of
+  reasoning about it, and it flipped. (1) The flag **breaks the Indeed account
+  connector**: same `fetch_indeed` call, baseline 10 positions in 37.8s, with
+  the flag `McpSourceUnavailable` in 11.9s — DECISIONS #29's corollary is now
+  measured. (2) The privacy premise it was based on is **false**: Gmail and
+  Drive are permission-denied from every agent call, with and without an
+  allowlist ("permission … not granted in this non-interactive session"), so
+  the headless default-deny of DECISIONS #27 already contains them. Recommend
+  closing the item as "not adopting". Method note worth keeping: two earlier
+  probes asked the agent "do you have tool X?" and returned a confident ABSENT
+  **for Indeed itself** — self-report is invalid here; a probe must be
+  task-shaped, carry a system prompt, and be validated against Indeed as a
+  known-reachable control before its answer means anything.
+  Closed the item as "not adopting" and wrote the harness up to match:
+  DECISIONS #34 (the call + both measurements + the method corollary),
+  `api/CLAUDE.md` (the default-deny is load-bearing; never probe tool
+  availability by asking the agent), the checklist item, the resume pointer,
+  and the README roadmap. Three of six pre-publish items now closed.
+
+- 2026-07-31 — Onboarding assets for cloners. New `workflows/00_first_run.md`
+  (the first-run SOP: market vars, agent CLI, CV import + its approval step,
+  optional Google, a small first search, evaluation as a separate step, plus a
+  troubleshooting table of the traps a first run actually hits), wired into the
+  `onboarding` module ahead of the profile SOP. Rewrote
+  `01_build_profile.md`, which still described the pre-platform flow
+  (`context/professional_profile.md`, `core/parse_profile.py`, "use the Edit
+  tool") and was being injected into the `profile` and `onboarding` chats —
+  the agent was being told to write files this repo doesn't have. Also closed
+  a gap in the earlier region work: `workflows/` was excluded from that sweep
+  and still documented `markets = Argentina-LATAM remote` plus the pre-rename
+  flags. Found along the way: CV upload is **PDF only** (422 otherwise) and
+  nothing told the user. 45 checks over prompt assembly, workflow existence,
+  dead paths and region defaults.
+
+- 2026-07-31 — Migrated the rest of the workflow corpus (`03`–`07`) off the
+  pre-platform flow: `.tmp/` scratch files, a `context/` directory that doesn't
+  exist here, `output/cvs/…` paths that would have violated hard rule #1,
+  Sheets as the system of record, Upwork as a source. Kept the operational
+  knowledge that was actually valuable (per-source filtering mechanics, the
+  anti-429 levers, the keyword-axis strategy) and rewrote the mechanics around
+  the real jobs and endpoints. Two things the old text stated backwards and the
+  agent was being told to believe: that evaluation sets `Rejected`/`Evaluating`
+  (it deliberately never changes status) and that dedupe keys on
+  `company+role+url` (URL is precisely what it must not use — Indeed rotates
+  it). `04` now reads weights from the active scoring config instead of
+  hardcoding the seeded defaults, which matters since this install runs v2.
+  131 checks over the whole corpus.
+
 - 2026-07-31 — Secrets sweep, code/UI half. Fixed the two tracked files that
   named the author: `Sidebar.tsx` now reads `full_name` from `profile_basics`
   (React Query, same key as the Profile screen, so it updates when you edit it —

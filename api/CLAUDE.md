@@ -103,7 +103,20 @@ proposal can also be rewritten before approval via `PATCH /changes/{id}`
   (decision #17).
 - A headless run **auto-denies any tool not in `AgentTask.allowed_tools`**. If
   an agent call must reach a tool (an MCP connector, say), name it there or it
-  will come back empty with no error to explain why (decision #27).
+  will come back empty with no error to explain why (decision #27). This
+  default-deny is load-bearing, and it is measured: Gmail and Drive come back
+  "permission … not granted in this non-interactive session" from every call,
+  with and without an allowlist. It is why the platform does **not** pass
+  `--strict-mcp-config` (decision #34) — don't add MCP scoping flags thinking
+  they buy privacy the deny already provides; they break Indeed.
+- **Never measure agent tool availability by asking the agent.** "Do you have
+  tool X?" returns a confident ABSENT even for a connector that provably works
+  — MCP tools resolve on demand, not from an inventory the model can recite. A
+  valid probe is **task-shaped and carries a system prompt** (see
+  `build_indeed_search_prompt` + `--append-system-prompt`), and must be
+  validated against Indeed as a known-reachable control before its result is
+  believed. Two probes were wrong this way before the third was right
+  (decision #34, corollary).
 - Every new endpoint should map to one already listed in `PLATFORM_SPEC.md`
   §5 — if you need one that isn't there, update the spec first, then build it
   (keeps the spec authoritative for the frontend built in Claude Design).

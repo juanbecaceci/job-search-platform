@@ -43,15 +43,29 @@ agent CLI itself). Anything you change here can break a live job handler.
   the interactive browser flow. Don't reintroduce a `flow.run_local_server()`
   reachable from an API request — inside a job handler that blocks a server
   thread on a prompt nobody will see (DECISIONS #23).
-- **Env loading goes through `env_config.load_env()`** (added 2026-07-31): it
-  loads `data/credentials/.env` then a root `.env`, resolved from the repo root
-  rather than the CWD, and is idempotent. `fetch_jobs_api.py`, `scrape_jobs.py`,
-  `fetch_jobs_indeed.py` and `load_positions_bulk.py` get it by importing
-  `env_config`. `sheets_manager.py` and `google_auth.py` still do their own
-  equivalent two-line load with **CWD-relative** paths — converting them is the
-  remainder of the Pre-publish "reconcile core dotenv loading" item. Don't add a
-  bare `load_dotenv()` anywhere: it reads only a root `.env`, so a user who
-  followed the README gets defaults instead of their settings.
+- **Env loading goes through `env_config.load_env()`** (added 2026-07-31,
+  completed 2026-08-02): it loads `data/credentials/.env` then a root `.env`,
+  resolved from the repo root rather than the CWD, and is idempotent. Every
+  module that needs env now gets it that way — `fetch_jobs_api.py`,
+  `scrape_jobs.py`, `fetch_jobs_indeed.py` and `load_positions_bulk.py` by
+  importing `env_config`, `sheets_manager.py` and `google_auth.py` by calling
+  `load_env()`. Don't add a bare `load_dotenv()` anywhere: it reads only a root
+  `.env`, so a user who followed the README gets defaults instead of their
+  settings.
+- **Any other relative path goes through `env_config.repo_path()`**, for the
+  same reason: it rebases a relative value on the repo root and passes an
+  absolute one through untouched. `google_auth.py`'s `CREDENTIALS_FILE` /
+  `TOKEN_FILE` use it, so a job handler under uvicorn reads the same token the
+  CLI wrote. A default like `data/credentials/token.json` written bare is a bug
+  waiting for a process that starts somewhere else (DECISIONS #31).
+- **Two import shapes, and modules must survive both.** `core/` files use
+  sibling imports (`from location_filters import …`), so an importer from `api/`
+  puts `ROOT/core` on `sys.path` (see `api/jobs/handlers/search_run.py`).
+  `google_auth.py`, `sheets_manager.py` and `upload_to_drive.py` need the
+  reverse as well — they import `core.*` — so each puts the **repo root** on
+  `sys.path` itself rather than relying on its caller. That is why
+  `python core/sheets_manager.py` works even though `api/routers/positions.py`
+  imports the same module with no path fixup.
 - **Search geography is configuration, never a literal.** `TARGET_REGION`,
   `LINKEDIN_LOCATION`, `JOB_SEARCH_COUNTRY` and `JOB_SEARCH_LOCATION` are read
   through `env_config`, and `api/config.py` reads the same names so both halves

@@ -17,15 +17,27 @@ Run `python scripts/authorize_google.py` once to mint or refresh the token.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-load_dotenv("data/credentials/.env")
-load_dotenv()
+# This module is imported both as `core.google_auth` (repo root on sys.path) and
+# — via its siblings' CLIs — from a process whose sys.path[0] is core/. Put the
+# repo root on the path so the `core.*` import below resolves either way.
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from core.env_config import load_env, repo_path  # noqa: E402
+
+# Env comes from data/credentials/.env then a root .env, both resolved from the
+# repo root rather than the CWD (see core/env_config.py). This used to be a
+# CWD-relative `load_dotenv("data/credentials/.env")`, which silently loaded
+# nothing whenever the process started anywhere but the repo root.
+load_env()
 
 # Both scopes, always — a token minted for only one of them can't serve the
 # other, and re-prompting mid-job is exactly what this module exists to avoid.
@@ -34,8 +46,10 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_PATH", "data/credentials/credentials.json")
-TOKEN_FILE = os.getenv("GOOGLE_TOKEN_PATH", "data/credentials/token.json")
+# Absolute, so a job handler running under uvicorn's CWD finds the same token
+# the CLI wrote. An absolute env override is used as given.
+CREDENTIALS_FILE = repo_path(os.getenv("GOOGLE_CREDENTIALS_PATH", "data/credentials/credentials.json"))
+TOKEN_FILE = repo_path(os.getenv("GOOGLE_TOKEN_PATH", "data/credentials/token.json"))
 
 _REAUTH_HINT = (
     "Run `python scripts/authorize_google.py` once to (re-)authorize "

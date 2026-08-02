@@ -1,10 +1,12 @@
 # Workflow 05 — Generate Application Documents
 
 ## Objective
-For a `Shortlisted` position: research the company, generate a tailored ATS-optimized CV (PDF + DOCX), generate a personalized cover letter (PDF + DOCX), upload both to Google Drive, and update the position status to `Ready to Apply`.
+For a shortlisted position: research the company, draft a tailored ATS-friendly
+CV and a personalized cover letter, let the user edit them, render to PDF/DOCX,
+and optionally upload to Google Drive.
 
 ## When to Use
-After the user marks a position as `Shortlisted` in Workflow 04.
+After the user shortlists a position in Workflow 04.
 
 ---
 
@@ -12,125 +14,143 @@ After the user marks a position as `Shortlisted` in Workflow 04.
 
 | Input | Source |
 |---|---|
-| position_id | Google Sheets |
-| Job description | Sheets → `description` field |
-| Candidate profile | `context/professional_profile.md` |
-| Company research | Generated in Step 1 below |
-| Tone preference | the user's choice: formal / startup / consulting |
+| `position_id` | The `positions` row |
+| Job description | `position.description` — persisted at discovery |
+| Candidate profile | `profile_basics` + `profile_sections` |
+| Template | The **active version** of the `cv` / `cover_letter` template |
+| Company research | `company.research_md` (Workflow 06) |
+| Tone | The user's choice: formal / startup / consulting |
+
+> **Architecture note.** Drafting is reasoning and runs through the user's own
+> agent CLI — no Anthropic API, no key (DECISIONS #10). Rendering to PDF/DOCX is
+> deterministic and happens in `core/`.
+
+---
+
+## The pipeline is two jobs, not one
+
+This mirrors `core/generate_cv.py`'s own design: write the Markdown, export it
+later. The gap between them is where the user edits.
+
+1. **Draft** — `POST /positions/{id}/documents/generate` → `202`. The agent
+   writes Markdown into a `Document` row. Nothing is rendered yet.
+2. **Edit** — `GET /documents/{id}` / `PUT /documents/{id}`. The user (or you,
+   at their request) revises the Markdown. Repeat as needed.
+3. **Export** — `POST /documents/{id}/export` → `202`. Renders PDF + DOCX to
+   `data/documents/<position>/` and records the paths on the row.
+   `GET /documents/{id}/file` downloads.
+4. **Upload (optional)** — `POST /documents/{id}/upload-drive`. Requires the
+   document to have been exported first.
+
+⚠️ Documents are written under `data/`, never to an `output/` directory at the
+repo root — everything user-generated lives under `data/` (hard rule #1). The
+`export()` wrappers in `core/generate_cv.py` hardcode a repo-root path and are
+**not** what the platform calls; it uses the pure `markdown_to_pdf` /
+`markdown_to_docx` renderers directly.
 
 ---
 
 ## Steps
 
-> **Nota de arquitectura:** la redacción (CV, cover letter, research) la hago yo (Claude Code)
-> en la conversación usando tu suscripción. Los tools solo hacen el trabajo determinístico:
-> scraping, export a PDF/DOCX y guardado. No se consume Anthropic API.
+### Step 1: Research the company first
 
-### Step 1: Research the Company
+Always. The research is what makes the summary and the cover letter specific
+rather than generic. See **Workflow 06**; the short version is
+`POST /companies/{id}/research`, which fills `company.research_md`.
 
-Always do this before generating the CV. Research personalizes both the summary and cover letter.
-Ver **Workflow 06** para el detalle. Resumen: `--scrape` baja el texto, yo sintetizo, `--save` guarda.
+### Step 2: Draft the CV
 
-Output: `output/companies/<company>/research.md`
+The draft is built from the profile + the job description + the research +
+the active CV template. Content rules, which matter more than format:
 
-### Step 2: Generate the CV
+- Lead with the strongest **relevant** achievement, with its metrics as the
+  profile states them — never rounded up, never embellished.
+- Skill levels exactly as declared in the profile. No inflation.
+- **No invented metrics, ever.** If the profile doesn't support a claim, it
+  doesn't go in, however well it would match the JD.
+- Mirror the JD's vocabulary where it's honest to do so — that's what ATS
+  keyword matching reads.
+- Tailor the summary to this role and company specifically.
+- ATS-safe layout: no tables, no multi-column, no text in images.
 
-1. **Yo redacto el CV** en Markdown leyendo `context/professional_profile.md` + el JD (del campo
-   `notes` de la posición) + el research. Aplico las reglas del perfil (caso insignia como logro
-   principal, niveles de skills tal como fueron declarados, keywords del JD para ATS, sin métricas inventadas).
-2. Lo guardo en `output/cvs/<position_id>/cv.md`.
-3. Exporto a PDF + DOCX (determinístico):
-   ```bash
-   python core/generate_cv.py --export --position-id <position_id>
-   ```
-   Genera: `output/cvs/<position_id>/cv.pdf` y `cv.docx`.
-
-**Validation checklist before proceeding:**
-- [ ] Flagship case is the lead achievement with its validated metrics
-- [ ] Skill levels match the profile's declared levels (no inflation)
+**Validation before moving on:**
+- [ ] Lead achievement is relevant to *this* role, with metrics intact
+- [ ] Skill levels match the profile
 - [ ] No invented metrics
-- [ ] Summary is tailored to this specific role/company
-- [ ] Keywords from the JD appear naturally in the CV
-- [ ] No tables or multi-column layout (ATS-safe)
+- [ ] Summary is specific to this role/company
+- [ ] JD keywords appear naturally, not stuffed
+- [ ] No tables or multi-column layout
 
-### Step 3: Edit the CV (if needed)
+### Step 3: Edit
 
-The user pide cambios por chat. **Yo reescribo el `cv.md`** y vuelvo a exportar:
-```bash
-python core/generate_cv.py --export --position-id <position_id>
-```
+The user asks for changes in chat; you rewrite the Markdown via
+`PUT /documents/{id}` and re-export. Typical requests:
 
-Example edits:
-- "Agrega mención de SQL en la sección de skills técnicos"
-- "El summary es muy genérico, enfocalo más en el dominio del rol"
-- "Borrá el bullet de docencia, no es relevante para este rol"
+- "Add SQL to the technical skills section"
+- "The summary is too generic, focus it on the role's domain"
+- "Drop the teaching bullet, it's not relevant here"
 
-Repeat until the user is satisfied.
+Re-exporting overwrites the rendered files for that document. Iterate until the
+user is satisfied — editing the Markdown is cheap, re-drafting from scratch
+costs another agent turn.
 
-### Step 4: Generate the Cover Letter
+### Step 4: Draft the cover letter
 
-1. **Yo redacto la cover letter** (≤350 palabras) leyendo perfil + JD + research, con el tono
-   apropiado a la empresa, y la guardo en `output/cover_letters/<position_id>/cover_letter.md`.
-2. Exporto a PDF + DOCX:
-   ```bash
-   python core/generate_cover_letter.py --export --position-id <position_id>
-   ```
+Same pipeline, `kind: cover_letter`. Keep it **under 350 words**.
 
-**Guía de tono (la aplico al redactar):**
-- **formal**: banks, large corporations, traditional enterprise
-- **startup**: seed to Series B startups, product companies
-- **consulting**: consulting firms, agencies, professional services
+**Tone guide:**
+- **formal** — banks, large corporations, traditional enterprise
+- **startup** — seed to Series B, product companies
+- **consulting** — consulting firms, agencies, professional services
 
 **Validation:**
 - [ ] Under 350 words
-- [ ] Opens with the flagship achievement (or the most relevant one for this role)
-- [ ] References the company specifically (not generic)
+- [ ] Opens with the achievement most relevant to this role
+- [ ] References the company specifically — something from the research, not a
+      line lifted off their homepage
 - [ ] No clichés ("I believe I am a perfect fit")
 - [ ] Clear call to action
 
-Para editar: reescribo el `cover_letter.md` y vuelvo a correr `--export`.
+### Step 5: Export and (optionally) upload
 
-### Step 5: Upload to Google Drive
+Export both documents, then upload to Drive if the user has authorized Google.
+Upload requires a prior export — there is no file to send otherwise. If they
+haven't set up Google, that's fine: the files are on disk under `data/documents/`
+and downloadable through the API.
 
-Use the Google Drive MCP to upload:
-```
-mcp__claude_ai_Google_Drive__create_file
-```
+### Step 6: Move the position forward
 
-Upload:
-- `output/cvs/<position_id>/cv.pdf`
-- `output/cvs/<position_id>/cv.docx`
-- `output/cover_letters/<position_id>/cover_letter.pdf`
+Status changes are **not** part of this workflow's jobs. When the user is ready,
+`POST /positions/{id}/status`. Recording an actual application is
+`POST /positions/{id}/application`, which creates the `applications` row —
+that's the record of what was sent and when.
 
-Save the Drive URLs.
+---
 
-### Step 6: Update Sheets
+## Edge cases
 
-```bash
-python core/sheets_manager.py --action update_status --id <position_id> --status "Ready to Apply"
-```
+**No description on the position.** The CV would be tailored to a job title.
+Fetch the description first, or tell the user the draft is generic and why.
 
-Also log the Drive URL in the `notes` field.
+**Profile too thin.** If the profile has only basics and no sections, drafting
+produces something hollow. Send them back to Workflow 01 rather than inventing
+substance.
+
+**PDF export fails.** Rendering needs the Playwright Chromium download
+(`playwright install chromium`). DOCX doesn't. A failed PDF with a working DOCX
+usually means that step was skipped at install.
 
 ---
 
 ## Output
 
-- `output/cvs/<position_id>/cv.pdf` + `cv.docx`
-- `output/cover_letters/<position_id>/cover_letter.pdf` + `cover_letter.docx`
-- Google Drive: both files uploaded
-- Sheets: status → `Ready to Apply`, Drive URLs recorded
+- `Document` rows (`cv`, `cover_letter`) with Markdown, status `draft`/`final`
+- Rendered PDF + DOCX under `data/documents/<position>/`
+- Drive URLs recorded, if uploaded
+- An `applications` row once the user actually applies
 
 ---
 
 ## Next Step
 
-→ Apply to the position and run:
-```bash
-python core/sheets_manager.py --action log_application --id <position_id>
-```
-Status → `Applied`
-
-→ After applying: set up Gmail monitoring (Workflow 02 → Gmail section)
-
-→ If interview scheduled: **Workflow 07 — Interview Prep**
+→ If an interview is scheduled: **Workflow 07 — Interview Prep**

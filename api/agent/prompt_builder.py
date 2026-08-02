@@ -28,7 +28,10 @@ from api.models import ModuleMemory
 # Which workflow SOP(s) inform each module's chat.
 _MODULE_WORKFLOWS: dict[str, list[str]] = {
     "profile": ["01_build_profile.md"],
-    "onboarding": ["01_build_profile.md"],
+    # Onboarding gets the first-run SOP *before* the profile one: a new cloner's
+    # problem is usually setup (market vars, agent CLI, PDF-only upload), not
+    # how to phrase an achievement.
+    "onboarding": ["00_first_run.md", "01_build_profile.md"],
     "searches": ["02_configure_search.md", "03_discover_jobs.md"],
     "scoring": ["04_evaluate_rank.md"],
     "positions": ["04_evaluate_rank.md"],

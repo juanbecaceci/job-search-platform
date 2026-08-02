@@ -13,7 +13,8 @@ Two problems this solves, both of which only bite a *cloner*:
 
 Paths resolve against the repo root, never the CWD: these modules are imported
 in-process by `api/jobs/handlers/*`, where the CWD is wherever uvicorn started
-(the same trap as the CWD-relative paths fixed in DECISIONS #31).
+(the same trap as the CWD-relative paths fixed in DECISIONS #31). `repo_path()`
+is the same rule for any other relative path a tool needs to open.
 
 `api/config.py` reads the same variable names for the API side, so the two
 halves of the system agree on one configuration.
@@ -48,6 +49,18 @@ def load_env() -> None:
 
 
 load_env()
+
+
+def repo_path(value: str | os.PathLike[str]) -> Path:
+    """Resolve a relative path against the repo root; leave absolute ones alone.
+
+    For the same reason `load_env` resolves its own files that way: a default
+    like `data/credentials/token.json` is relative to the *repo*, not to
+    wherever the process happened to start. An env override may be absolute, so
+    only relative values are rebased.
+    """
+    path = Path(value)
+    return path if path.is_absolute() else _ROOT / path
 
 
 # --- Market / geography ------------------------------------------------------
