@@ -7,6 +7,17 @@
 
 ---
 
+- 2026-08-02 — Committed everything (`4e78215`: the 2026-07-31 workflow
+  migration + both of today's items) and ran the **final secrets sweep on the
+  committed tree**, which closes the Pre-publish checklist. Six checks clean: no
+  tracked path under `data/`, `data/` ignored, `check_no_secrets.py` exit 0
+  (also as the pre-commit hook), the author's name in `LICENSE` and nowhere else,
+  no tracked env/credential/DB files, and no emails, absolute local paths,
+  credential-shaped strings or opaque Sheets/Drive ids anywhere tracked. Noted
+  but deliberately left: the seeded USD 3,500/month salary floor is an
+  opinionated default a cloner inherits (configurable, documented, not personal
+  data). Nothing now blocks publication except Juan's go-ahead — and the push
+  must be `stage5-complete` alone, never `--all`.
 - 2026-08-02 — Closed `frontend/design-reference/`: **not shipped**. Juan chose
   dropping it over genericizing, once the inspection showed the cost: 55 name
   occurrences of which only 1 is the cosmetic sidebar label — 47 are the

@@ -30,14 +30,16 @@ premise behind the item turned out to be false (DECISIONS #34).
 either entry point), and `frontend/design-reference/` (**not shipped** —
 gitignored, DECISIONS #12 rewritten to name `tokens.css` as the design source of
 record). See both items below.
-**Next: the final secrets sweep is the only item left**, and it is the gate
-before adding a remote. Everything it checks passed as recently as 2026-07-31 —
-re-run it against the current tree, then push `stage5-complete` alone (see the
-git-state note below: `main` and the backup branch still carry the author's name
-in their history).
-⚠️ Uncommitted: the 2026-07-31 workflow migration plus the 2026-08-02 changes are
-all still in the working tree. Commit before the sweep so the sweep judges what
-would actually be published.
+**The Pre-publish checklist is COMPLETE as of 2026-08-02.** The final secrets
+sweep passed against commit `4e78215` (six checks, on the committed tree), which
+also carries the 2026-07-31 workflow migration.
+**Resume point: nothing is blocking publication but Juan's go-ahead.** The one
+remaining action is adding a remote and pushing — and it has a trap worth
+re-reading in the git-state note below: **push `stage5-complete` alone**
+(`git push -u origin stage5-complete:main`), never `--all`/`--mirror`, because
+`main` and `backup/pre-squash-20260731` still carry the author's name in their
+history. Re-run the sweep's mechanical checks if anything else gets committed
+first; the tick covers `4e78215` only.
 
 ✅ Google is authorized (2026-07-29): one token with Sheets+Drive scopes in
 `data/credentials/token.json`, and `GOOGLE_DRIVE_FOLDER_ID` set in that folder's
@@ -640,22 +642,28 @@ region/role-agnostic and easy to onboard.
       credentials/tokens/DB files, not personal names. Hard rule #6 (grep for
       names/employers before committing) is a manual step; don't treat a green
       hook as proof the content is genericized.
-- [ ] **Final secrets sweep.** `git ls-files | grep -i data` empty; run
-      `python scripts/check_no_secrets.py`; `git status --ignored` shows `data/`
-      ignored; skim tracked files for personal data (only `LICENSE` should name
-      the author).
-      ⚠️ **Deliberately last, and deliberately still open** — everything below
-      already passed on 2026-07-31, but this is the gate, not a task. It is now
-      the ONLY open item. Re-run it after committing the working tree (so it
-      judges what would actually be published) and after any further doc edits;
-      tick it only immediately before adding a remote.
-      · `frontend/design-reference/` no longer feeds into this: it was decided
-        2026-08-02 and gitignored, so the path can't enter the tree
-        (`git check-ignore` verified). `check_no_secrets.py` exits 0 on the
-        current tree.
-      · What is left to judge is the 2026-07-31 workflow migration + the
-        2026-08-02 changes, all still uncommitted, plus `workflows/00_first_run.md`
-        (untracked, to be committed).
+- [x] **Final secrets sweep PASSED 2026-08-02, against commit `4e78215`** —
+      run on the COMMITTED tree, after committing everything, so it judged what
+      would actually be published. Six checks, all clean:
+      · no tracked path under `data/`; `data/` shows as ignored;
+      · `scripts/check_no_secrets.py` exit 0 (also as the pre-commit hook);
+      · the author's name appears in exactly one tracked file, `LICENSE`
+        (`git grep -il <surname> HEAD`), which is intended;
+      · no tracked `.env`, `credentials.json`, `token*.json`, `.db`/`.sqlite`;
+      · no emails, local absolute paths, credential-shaped strings, opaque
+        Sheets/Drive-style IDs, or ATS vendor names in any tracked file — the
+        only email is `jane@acme.com` in `PLATFORM_SPEC.md`, a placeholder, and
+        the only long identifiers are code symbols and MCP tool names;
+      · every `.env.example` value is empty or a neutral default.
+      ⚠️ **This tick covers `4e78215` and nothing after it.** Anything committed
+      before the remote is added reopens it — re-running the mechanical checks
+      takes seconds, so do it rather than assume.
+      Observation, not a finding: `workflows/04_evaluate_rank.md` documents a
+      **USD 3,500/month** salary floor. That is the seeded default in
+      `config/defaults/scoring_criteria.default.json` and is documented as
+      configurable, not personal data — but it is an opinionated default a
+      cloner inherits, in the same family as the regional defaults closed on
+      2026-07-31. Left as is deliberately.
       ↳ CODE/UI IS CLEAN as of 2026-07-31. Both previously-found files are
       fixed, and the mechanical checks all pass (no tracked file under `data/`,
       `check_no_secrets.py` exit 0, `data/` shows ignored, no tracked
