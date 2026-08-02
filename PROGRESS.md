@@ -32,7 +32,9 @@ gitignored, DECISIONS #12 rewritten to name `tokens.css` as the design source of
 record). See both items below.
 **The Pre-publish checklist is COMPLETE as of 2026-08-02.** The final secrets
 sweep passed against commit `4e78215` (six checks, on the committed tree), which
-also carries the 2026-07-31 workflow migration.
+also carries the 2026-07-31 workflow migration, and was **re-run clean against
+`e5076f1`** after the harness audit below — 155 tracked files, the author named
+only in `LICENSE`.
 **A harness audit ran 2026-08-02, after that sweep** (see `PROGRESS_LOG.md`).
 Structure was sound — 4 `CLAUDE.md` files cross-referenced, 0 broken links,
 spec sections and directory layouts matching reality. It fixed four stale
@@ -46,8 +48,9 @@ It also **deleted two dead files** — `core/parse_profile.py` (superseded by
 `api/jobs/handlers/import_cv.py`) and `frontend/src/screens/Placeholder.tsx` —
 after verifying nothing references them; `requirements.txt` is unchanged and
 `vite build` still reports 104 modules.
-⚠️ These are commits **after** `4e78215`, so the secrets-sweep tick below needs
-its mechanical checks re-run before pushing — they take seconds.
+The audit landed as `e5076f1`, and **the secrets sweep was re-run against it**
+— all six checks clean on the committed tree, so the tick below now covers
+`e5076f1`, not just `4e78215`.
 
 **Resume point: nothing is blocking publication but Juan's go-ahead.** The one
 remaining action is adding a remote and pushing — and it has a trap worth
