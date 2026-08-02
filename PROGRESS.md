@@ -54,8 +54,20 @@ The audit landed as `e5076f1`, and **the secrets sweep was re-run against it**
 — all six checks clean on the committed tree, so the tick below now covers
 `e5076f1`, not just `4e78215`.
 
-**Resume point: nothing is blocking publication but Juan's go-ahead.** The one
-remaining action is adding a remote and pushing — and it has a trap worth
+**PUBLISHED 2026-08-02** → https://github.com/juanbecaceci/job-search-platform
+`stage5-complete` was pushed as `origin/main` (tip `f5dc1d2`) after the six
+mechanical checks passed against that exact commit. Verified on the remote: only
+`main` exists, its root is `3dc75c5` with no parents, `data/` contributes 0
+paths, and the commit author is the GitHub noreply address, not a personal
+email. `stage5-complete` now **tracks `origin/main`**, so a bare `git push`
+publishes.
+⚠️ THE `--all` TRAP IS STILL LIVE, and now it has a remote to fire at: local
+`main` (`922e5e1`) and `backup/pre-squash-20260731` still carry the author's
+name in their history. Never `git push --all` / `--mirror`. Push explicit
+refspecs only. Still open: decide whether to keep that backup branch at all.
+
+**Resume point (superseded): nothing was blocking publication but Juan's
+go-ahead.** The action was adding a remote and pushing — and it has a trap worth
 re-reading in the git-state note below: **push `stage5-complete` alone**
 (`git push -u origin stage5-complete:main`), never `--all`/`--mirror`, because
 `main` and `backup/pre-squash-20260731` still carry the author's name in their

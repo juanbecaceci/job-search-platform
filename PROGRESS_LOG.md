@@ -7,6 +7,22 @@
 
 ---
 
+- 2026-08-02 — **PUBLISHED.** `stage5-complete` pushed to
+  https://github.com/juanbecaceci/job-search-platform as `origin/main`, tip
+  `f5dc1d2`. Sequence: re-ran the six mechanical checks against that exact
+  commit (155 files, 0 under `data/`, author only in `LICENSE`, 0 emails /
+  absolute paths / credential strings, `check_no_secrets.py` exit 0), confirmed
+  the remote had **0 refs** (an empty repo — a GitHub-generated README would
+  have collided with the squashed root), then `git push -u origin
+  stage5-complete:main`, an explicit refspec and never `--all`. Verified after:
+  the remote holds only `main`, `origin/main` == local HEAD, the published root
+  is `3dc75c5` with no parents (no pre-squash history), and `data/` contributes
+  0 paths. One thing the six checks never covered, checked separately and clean:
+  **commit author metadata** — the commits carry
+  `juan.becaceci@users.noreply.github.com`, not a personal email, so the file
+  content sweep wasn't hiding a leak in the header. `stage5-complete` now tracks
+  `origin/main`, which means the `--all` trap finally has a remote to fire at —
+  local `main` and `backup/pre-squash-20260731` are still name-bearing.
 - 2026-08-02 — **README status refreshed before creating the GitHub repo.** Its
   status blockquote still said "Remaining before a public release: first-run
   onboarding docs and a final secrets sweep" and the roadmap still had
