@@ -7,6 +7,47 @@
 
 ---
 
+- 2026-08-02 — **Wired geo filtering into `search_run` and made
+  `searches.markets` mean something** (DECISIONS #35). The column had been
+  write-only: `POST /searches` accepted it, `change_applier` let the agent edit
+  it, `prompt_builder` advertised it as editable config, `sheets_export` wrote
+  it out — and nothing read it, while the wizard hardcoded `markets: []`. So
+  "limit this search to Europe" was a request the system accepted, persisted
+  and ignored. Meanwhile the runner never geo-filtered while the four CLIs did,
+  so the same search returned different results from the UI and the terminal.
+  Juan's calls: **union** semantics (a position survives if any listed market
+  could take it, empty falls back to `TARGET_REGION`) and **filter by default**
+  rather than opt-in.
+  · New `filter_by_regions` / `effective_regions` in `core/location_filters.py`.
+  · `search_run` filters per source before dedupe; `fetched` stays the raw
+    count and `filtered_out` sits next to it, so the funnel reads "the source
+    returned N, geography removed M". Also `total_filtered_out` + the resolved
+    `regions` on the job result, a `Filtered` column in the per-source table,
+    and the count in the live progress message. **Surfacing the drop is the
+    load-bearing part** — #32 records that the CLIs shipped with
+    `--market latam-argentina` as a default and silently emptied cloners'
+    searches; wiring the filter without the counter reproduces that bug inside
+    the app.
+  · `GET /searches/defaults` now serves `regions` + `default_region` from the
+    `REGIONS` table so the wizard keeps no second copy; wizard step 3 gained
+    market chips and states what an empty selection falls back to.
+  · **The asymmetry worth remembering**: `filter_by_regions` returns the list
+    untouched when it resolves to "no filtering", so non-remote roles survive —
+    whereas `is_region_eligible` rejects non-remote roles *before* looking at
+    the region (line 152, ahead of the worldwide check). Copying the CLI
+    behaviour would have made the `worldwide` default silently drop every
+    on-site role, contradicting "filters nothing" as promised in
+    `.env.example`, `core/CLAUDE.md` and #32.
+  · Verified: 13 pure-logic checks (union, fallback, worldwide-wins,
+    legacy alias, unknown key stays permissive, non-remote both ways, input not
+    mutated) and 11 handler checks against a **throwaway DB** with a fake
+    fetcher — the script aborts if the engine resolves to `app.db`. `tsc -b
+    --noEmit` and `vite build` clean. No live search was run, so real data is
+    untouched.
+  · ⚠️ Behaviour change for Juan specifically: his `TARGET_REGION` is
+    `Argentina-LATAM` (→ `latam`), inherited from the old `.env.example` rather
+    than chosen, so unmarked searches now filter to LATAM. Noted in
+    `PROGRESS.md` with the one-line way out.
 - 2026-08-02 — **Repo is public; audited the published result, then renamed the
   local branch to `main`.** The audit ran against a **fresh clone of the public
   repo** and scanned **all 9 commits** — every version of every file, 157 paths

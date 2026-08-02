@@ -156,7 +156,7 @@ Terminal: Rejected · Withdrawn · Ghosted
   "keywords": ["AI operations", "automation engineer", "workflow automation"],
   "sources": ["remotive", "jobicy", "linkedin", "indeed"],
   "posted_within_days": 7,
-  "markets": ["worldwide remote"],
+  "markets": ["latam", "europe"],
   "status": "analyzed",
   "total_found": 143,
   "total_new": 37,
@@ -170,14 +170,33 @@ Terminal: Rejected · Withdrawn · Ghosted
       "started_at": "2026-07-08T12:55:00Z",
       "finished_at": "2026-07-08T13:00:00Z",
       "stats": {
-        "remotive":  { "fetched": 50, "new": 12, "duplicates": 8, "errors": 0 },
-        "linkedin":  { "fetched": 75, "new": 20, "duplicates": 30, "errors": 0 },
-        "jobicy":    { "fetched": 18, "new": 5,  "duplicates": 2,  "errors": 0 }
+        "remotive":  { "fetched": 50, "new": 12, "duplicates": 8, "errors": 0, "filtered_out": 30 },
+        "linkedin":  { "fetched": 75, "new": 20, "duplicates": 30, "errors": 0, "filtered_out": 25 },
+        "jobicy":    { "fetched": 18, "new": 5,  "duplicates": 2,  "errors": 0, "filtered_out": 11 }
       }
     }
   ]
 }
 ```
+
+**`markets` is the search's geography, and it is applied** (DECISIONS #35).
+Values are region keys from `core/location_filters.py`'s `REGIONS` table
+(`latam`, `north-america`, `europe`, `apac`), served to the UI by
+`GET /searches/defaults` so no client keeps its own copy. Semantics:
+
+- **Union** — a position survives if *any* listed market could take it.
+- **Empty falls back to `TARGET_REGION`**, so a search that says nothing about
+  geography behaves like the CLIs. The shipped default is `worldwide`, which
+  filters nothing.
+- A `worldwide` or unrecognized member collapses the union to no filtering. An
+  unknown key must never be the reason a search comes back empty.
+- The drop is **reported, never silent**: `filtered_out` per source in
+  `stats`, plus `total_filtered_out` and the resolved `regions` on the job
+  result. `fetched` stays the raw source count, so the funnel reads "the source
+  returned N, geography removed M".
+- Filtering only starts once a real region is named; while it is off,
+  **non-remote roles are kept**. Once a region is named, remote eligibility is
+  part of the test (`is_region_eligible` rejects non-remote roles outright).
 
 ### 4.5 Job (async work)
 
@@ -314,7 +333,7 @@ Validation the UI should enforce live: **criterion weights must sum to 1.0**; ca
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/searches?status&page` | list with persisted metrics |
-| GET | `/searches/defaults` | `{ sources: [{id, label, enabled_default}], keyword_groups: {automation_engineer: [...], ai_ops: [...], ...} }` |
+| GET | `/searches/defaults` | `{ sources: [{id, label, enabled_default}], keyword_groups: {automation_engineer: [...], ai_ops: [...], ...}, regions: [{id, label}], default_region }` |
 | POST | `/searches` | `{ name, sources, keywords, posted_within_days, markets }` → created as `draft` |
 | GET | `/searches/{id}` | full detail incl. `runs` and `positions_by_source` |
 | POST | `/searches/{id}/run` | `202 → { job_id, search_run_id }`; search status → `running` |
@@ -456,8 +475,8 @@ event: error            data: { "message": "…" }
 | `/onboarding` | First-run wizard: welcome → drop CV PDF (`POST /onboarding/import-cv`, live job progress) → **review**: approve/reject each proposed change inline (basics + one card per section) → done (derived checklist). Further refinement happens in the ChatDrawer, which is scoped to the `profile` module on this route |
 | `/` | **Dashboard**: date-range picker (default 7 days) · stat tiles (positions found, evaluated, avg score, searches run) · by-source breakdown chart · Top 5 positions (score + status chip) · recent searches list |
 | `/searches` | Table: name, date, status chip, avg score, sources; row click → detail |
-| `/searches/new` | **3-step wizard**: ① name → ② sources (toggle cards, all on by default) → ③ keywords (chips, pre-filled from system defaults, add/remove) + posted-within selector (7 / 30 / 180 days) → Create & Run |
-| `/searches/:id` | Header (status, metrics) · **live run progress panel** (per-source progress via SSE) · per-source stats table (fetched/new/duplicates/errors) · keywords used · found positions table · **Evaluate all found** button (`POST /positions/evaluate` with this run's position ids, live job progress) |
+| `/searches/new` | **3-step wizard**: ① name → ② sources (toggle cards, all on by default) → ③ keywords (chips, pre-filled from system defaults, add/remove) + posted-within selector (7 / 30 / 180 days) + **markets** (toggle chips from `defaults.regions`; none selected states the `TARGET_REGION` fallback and whether it filters) → Create & Run |
+| `/searches/:id` | Header (status, metrics) · **live run progress panel** (per-source progress via SSE) · per-source stats table (fetched/new/duplicates/errors/filtered_out) · keywords used · found positions table · **Evaluate all found** button (`POST /positions/evaluate` with this run's position ids, live job progress) |
 | `/positions` | Filterable/sortable table (status, source, search, track, min score, text search) + totals; quick status change per row; row checkboxes + **select all (filtered)** + bulk **Evaluate selected** action (`POST /positions/evaluate`, live job progress) |
 | `/positions/board` | **Kanban**: one column per pipeline status, drag & drop card → `POST /{id}/status`; terminal states collapsed to the right |
 | `/positions/:id` | Detail with tabs: **Info** (all fields, edit) · **Evaluation** (score dial 0-100, category badge, per-criterion breakdown bars with rationale, salary gate result, config version used, re-evaluate button) · **History** (timeline of position_events) · **Documents** (markdown drafts, edit, export PDF/DOCX, Drive upload) · **Company** (info + research) · **Application** (dates, contact, outcome, follow-up). Status changer in header |

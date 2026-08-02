@@ -16,6 +16,7 @@ export default function NewSearch() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [kwInput, setKwInput] = useState("");
   const [postedWithin, setPostedWithin] = useState(30);
+  const [markets, setMarkets] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -37,6 +38,12 @@ export default function NewSearch() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  const toggleMarket = (id: string) =>
+    setMarkets((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const addKeyword = () => {
     const v = kwInput.trim();
     if (v && !keywords.includes(v)) setKeywords((k) => [...k, v]);
@@ -51,7 +58,7 @@ export default function NewSearch() {
         sources: [...sources],
         keywords,
         posted_within_days: postedWithin,
-        markets: [],
+        markets: [...markets],
       });
       const run = await api.runSearch(search.id);
       nav(`/searches/${search.id}?job=${run.job_id}`);
@@ -140,7 +147,7 @@ export default function NewSearch() {
         )}
         {step === 3 && (
           <>
-            <StepTitle title="Keywords & recency" hint="Pre-filled from your defaults — add or remove as needed." />
+            <StepTitle title="Keywords, recency & markets" hint="Pre-filled from your defaults — add or remove as needed." />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
               {keywords.map((kw) => (
                 <span
@@ -207,6 +214,45 @@ export default function NewSearch() {
                   {d} days
                 </button>
               ))}
+            </div>
+
+            <div style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600, margin: "20px 0 8px" }}>
+              Markets
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(defaults.data?.regions ?? []).map((r) => {
+                const on = markets.has(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => toggleMarket(r.id)}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      borderRadius: "var(--radius-md)",
+                      cursor: "pointer",
+                      background: on ? "color-mix(in srgb, var(--accent-primary) 12%, transparent)" : "var(--surface-sunken)",
+                      border: `1px solid ${on ? "var(--border-accent)" : "var(--border-default)"}`,
+                      color: on ? "var(--text-primary)" : "var(--text-secondary)",
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 8, lineHeight: 1.5 }}>
+              {markets.size === 0 ? (
+                <>
+                  None selected — falls back to <code>{defaults.data?.default_region ?? "worldwide"}</code> (your
+                  <code> TARGET_REGION</code>).{" "}
+                  {defaults.data?.default_region === "worldwide"
+                    ? "No geographic filtering will be applied."
+                    : "Roles locked to other regions will be dropped, and the count shown per source."}
+                </>
+              ) : (
+                <>Keeps roles someone in any selected market could take. Anything locked elsewhere is dropped, and counted per source.</>
+              )}
             </div>
           </>
         )}

@@ -11,9 +11,14 @@ migrated data (whose PK is that slug). A re-found position is linked to this run
 (is_new=False) and gets the new source merged into its `sources`; a brand-new
 one is inserted (status Discovered) and linked (is_new=True).
 
-Geo/market filtering is intentionally NOT applied here (the LATAM filter in
-`fetch_all` is region-specific; keeping the runner region-agnostic is a
-pre-publish goal). Positions are stored as keyword-matched by the fetchers.
+Geo/market filtering IS applied here, as of 2026-08-02 (DECISIONS #35). Each
+source's results pass through `core.location_filters.filter_by_regions` before
+dedupe, using `search.markets` (union: a position survives if ANY listed region
+could take it) and falling back to `TARGET_REGION` when the search names none.
+The drop is reported per source as `filtered_out` rather than applied silently —
+the earlier region default silently emptied CLI searches, and that is exactly
+the failure this must not reproduce. With `worldwide` (the default) nothing is
+filtered and the runner behaves as it always did.
 """
 
 from __future__ import annotations
@@ -50,6 +55,7 @@ if _CORE_DIR not in sys.path:
 
 from core import fetch_jobs_api as api_fetchers  # noqa: E402
 from core import scrape_jobs  # noqa: E402
+from core.location_filters import effective_regions, filter_by_regions  # noqa: E402
 from core.sheets_manager import make_position_id  # noqa: E402
 
 # Sources this handler can run. The first five are the free, no-auth public
@@ -74,8 +80,9 @@ def _fetch_linkedin(keywords: list[str]) -> list[dict[str, Any]]:
     """LinkedIn via the public guest endpoint (`core/scrape_jobs.py`).
 
     Unlike the API fetchers, `scrape_linkedin` takes ONE keyword string per
-    call, so we loop and merge. Geo filtering is deliberately not applied (the
-    runner stays region-agnostic); `LINKEDIN_LOCATION` only scopes the query.
+    call, so we loop and merge. `LINKEDIN_LOCATION` scopes the *query*; the
+    region filter is applied afterwards by `handle`, uniformly across sources,
+    so this function stays a plain fetcher.
 
     Descriptions are a second request per posting. `enrich_linkedin_descriptions`
     owns the anti-429 machinery (guest-cookie priming, a job-id cache under
@@ -162,6 +169,11 @@ def handle(session: Session, job: Job, params: dict[str, Any], progress) -> dict
     for s in skipped:
         stats[s] = {"fetched": 0, "new": 0, "duplicates": 0, "errors": 0, "skipped": 1}
 
+    # Geography: the search's own markets, else TARGET_REGION. Resolved once so
+    # the run reports one consistent answer even if the env changes mid-run.
+    regions = list(search.markets or [])
+    active_regions = effective_regions(regions)
+
     company_cache: dict[str, Company] = {}
     # pids already linked to THIS run — a position surfaced by two sources (or
     # twice in one feed) must be linked once (composite PK is unique per run).
@@ -174,7 +186,8 @@ def handle(session: Session, job: Job, params: dict[str, Any], progress) -> dict
         for idx, source in enumerate(runnable):
             progress(idx / total_sources, f"{source}: fetching", stats=stats)
             source_stats: dict[str, Any] = {
-                "fetched": 0, "new": 0, "duplicates": 0, "errors": 0
+                "fetched": 0, "new": 0, "duplicates": 0, "errors": 0,
+                "filtered_out": 0,
             }
             try:
                 fetched = _FETCHERS[source](keywords)
@@ -194,7 +207,15 @@ def handle(session: Session, job: Job, params: dict[str, Any], progress) -> dict
                 progress((idx + 1) / total_sources, f"{source}: error ({exc})", stats=stats)
                 continue
 
+            # `fetched` stays the raw source count; the region drop is reported
+            # next to it instead of being folded into it, so the funnel reads
+            # "the source returned N, geography removed M".
             source_stats["fetched"] = len(fetched)
+            if active_regions:
+                eligible = filter_by_regions(fetched, regions)
+                source_stats["filtered_out"] = len(fetched) - len(eligible)
+                fetched = eligible
+
             for raw in fetched:
                 role = raw.get("role", "")
                 if not role:
@@ -248,7 +269,13 @@ def handle(session: Session, job: Job, params: dict[str, Any], progress) -> dict
             # persist incrementally so partial results survive a later failure.
             run.stats = dict(stats)
             session.commit()
-            progress((idx + 1) / total_sources, f"{source}: {source_stats['new']} new", stats=stats)
+            dropped = source_stats["filtered_out"]
+            note = f" ({dropped} outside {'/'.join(active_regions)})" if dropped else ""
+            progress(
+                (idx + 1) / total_sources,
+                f"{source}: {source_stats['new']} new{note}",
+                stats=stats,
+            )
     except Exception:
         # Mark the search failed (its own committed state) before the runner
         # rolls back and records the job failure.
@@ -274,6 +301,8 @@ def handle(session: Session, job: Job, params: dict[str, Any], progress) -> dict
         "search_id": search.id,
         "total_new": total_new,
         "total_found": total_found,
+        "total_filtered_out": sum(s.get("filtered_out", 0) for s in stats.values()),
+        "regions": active_regions,
         "stats": stats,
         "skipped_sources": skipped,
     }

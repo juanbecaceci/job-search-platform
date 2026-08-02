@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import sys
 from functools import lru_cache
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from api.config import CONFIG_DIR
+from api.config import CONFIG_DIR, ROOT_DIR
 from api.db.engine import get_session
 from api.deps import get_runner
 from api.jobs import JobRunner
@@ -19,6 +20,7 @@ from api.schemas.common import Page
 from api.schemas.position import PositionCard
 from api.schemas.requests import SearchCreate, SearchRunAccepted
 from api.schemas.search import (
+    RegionDefault,
     SearchDefaults,
     SearchDetail,
     SearchOut,
@@ -26,6 +28,15 @@ from api.schemas.search import (
     SourceBucket,
     SourceDefault,
 )
+
+# core/ uses sibling imports, so it must be importable as a top-level root —
+# same fixup as `api/jobs/handlers/search_run.py` (see core/CLAUDE.md).
+_CORE_DIR = str(ROOT_DIR / "core")
+if _CORE_DIR not in sys.path:
+    sys.path.insert(0, _CORE_DIR)
+
+from core.location_filters import REGIONS, normalize_region  # noqa: E402
+from core.env_config import target_region  # noqa: E402
 
 router = APIRouter(prefix="/searches", tags=["searches"])
 
@@ -127,7 +138,18 @@ def search_defaults() -> SearchDefaults:
         for key, site in data.get("sites", {}).items()
     ]
     keyword_groups = data.get("search_keywords_by_role", {})
-    return SearchDefaults(sources=sources, keyword_groups=keyword_groups)
+    # Acronyms don't survive .title() ("Latam", "Apac"), so name them.
+    labels = {"latam": "LATAM", "apac": "APAC"}
+    regions = [
+        RegionDefault(id=key, label=labels.get(key, key.replace("-", " ").title()))
+        for key in REGIONS
+    ]
+    return SearchDefaults(
+        sources=sources,
+        keyword_groups=keyword_groups,
+        regions=regions,
+        default_region=normalize_region(target_region()) or "worldwide",
+    )
 
 
 @router.get("/{search_id}", response_model=SearchDetail)

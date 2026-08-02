@@ -182,6 +182,58 @@ def filter_by_region(positions: list[dict], region: str | None = None) -> list[d
     ]
 
 
+# --- Multi-region filtering (union) ------------------------------------------
+# `searches.markets` is a list: a search can target several regions at once, and
+# a position survives if ANY of them could take it. Single-region callers (the
+# CLIs) keep using `filter_by_region` above.
+
+def effective_regions(regions: object = None) -> list[str]:
+    """Normalize a list of region keys; `[]` means "do not filter at all".
+
+    An empty/absent list falls back to `TARGET_REGION`, so a search that says
+    nothing about geography behaves like the rest of the tools. A `worldwide`
+    (or unknown) member collapses the whole union to "no filtering": in a union,
+    the most permissive member wins, and an unrecognized key must never be the
+    reason a search comes back empty.
+    """
+    keys = [normalize_region(r) for r in (regions or []) if str(r or "").strip()]
+    if not keys:
+        keys = [normalize_region(target_region())]
+
+    out: list[str] = []
+    for key in keys:
+        if key in WORLDWIDE_KEYS:
+            return []
+        if key not in REGIONS:
+            _warn_unknown_region(key)
+            return []
+        if key not in out:
+            out.append(key)
+    return out
+
+
+def filter_by_regions(positions: list[dict], regions: object = None) -> list[dict]:
+    """Drop positions no listed region could take. Union across `regions`.
+
+    Note the deliberate difference from `filter_by_region`: when this resolves
+    to "no filtering" it returns the list untouched, so **non-remote positions
+    survive**. `is_region_eligible` rejects those up front, which is right for
+    the remote-focused CLIs but would make a `worldwide` default silently drop
+    on-site roles — and `worldwide` is documented everywhere as filtering
+    nothing. Filtering only starts once a real region is named.
+    """
+    keys = effective_regions(regions)
+    if not keys:
+        return list(positions)
+    return [
+        pos for pos in positions
+        if any(
+            is_region_eligible(pos.get("location", ""), pos.get("remote", True), key)
+            for key in keys
+        )
+    ]
+
+
 # --- Backwards-compatible LATAM helpers --------------------------------------
 # The tools shipped with a LATAM-only filter before the region became
 # configurable. These keep that exact behaviour available by name.

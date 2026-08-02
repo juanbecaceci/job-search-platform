@@ -386,3 +386,40 @@ This file exists so tokens don't get spent re-deriving conclusions already reach
     delivers) — and must be validated against Indeed as a known-reachable
     control before its answer is believed. A probe that cannot see a connector
     proven to be there is measuring nothing.
+
+35. **`searches.markets` is applied by the runner, as a union, and never
+    silently.** Until 2026-08-02 the column was write-only: `POST /searches`
+    accepted it, `change_applier` let the agent edit it, `prompt_builder`
+    advertised it as editable config, `sheets_export` wrote it out — and
+    nothing read it. The wizard hardcoded `markets: []`. So "limit this search
+    to Europe" was a request the system accepted, persisted, and ignored. The
+    runner meanwhile never geo-filtered at all, while the four standalone CLIs
+    did, so the same search returned different results from the UI and the
+    terminal. `search_run` now filters each source's results through
+    `core.location_filters.filter_by_regions` before dedupe.
+    **Semantics: union.** A position survives if *any* listed market could take
+    it — the natural reading of "the markets I'm targeting", and it needs no
+    migration of the existing `list[str]` column. An empty list falls back to
+    `TARGET_REGION` so a search that says nothing about geography behaves like
+    the CLIs; the shipped default `worldwide` filters nothing. A `worldwide` or
+    **unrecognized** member collapses the union to no filtering: in a union the
+    most permissive member wins, and a typo must never be the reason a search
+    comes back empty (same principle as the one-time stderr warning in #32).
+    **The drop is reported, never silent** — `filtered_out` per source in the
+    run stats, `total_filtered_out` and the resolved `regions` on the job
+    result, a column in the per-source table, and a note in the live progress
+    message. This is the load-bearing part: #32 records that the CLIs shipped
+    with `--market latam-argentina` as a *default*, so a cloner silently lost
+    every non-LATAM job. Wiring the filter without surfacing the count would
+    have reproduced that bug inside the app.
+    **One asymmetry worth knowing before you touch this:** `filter_by_regions`
+    returns the list untouched when it resolves to "no filtering", so
+    **non-remote roles survive** — whereas `is_region_eligible` (and therefore
+    the CLIs' `filter_by_region`) rejects non-remote roles before it even looks
+    at the region. Keeping the CLI behaviour would have made the `worldwide`
+    default silently drop every on-site role, contradicting the "filters
+    nothing" promise made in `.env.example`, `core/CLAUDE.md` and #32. Once a
+    real region is named, remote eligibility is part of the test again.
+    Region choices are served to the UI by `GET /searches/defaults`
+    (`regions` + `default_region`) so no client keeps a second copy of the
+    `REGIONS` table.

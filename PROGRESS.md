@@ -112,11 +112,18 @@ checks assert no workflow references `context/`, `output/cvs/`, `.tmp/` caches,
 `parse_profile.py`, Upwork, `sheets_manager --action` writes, `latam-argentina`
 or a `--market` flag, and that every module's prompt still assembles.
 
-Known follow-ups (not blockers): the runner skips geo/market filtering
-entirely. `core/location_filters.py` now offers `filter_by_region(positions,
-region)` driven by `TARGET_REGION` (DECISIONS #32) and the standalone CLIs use
-it, but `search_run` deliberately does not — wiring it in (and finally using the
-unused `searches.markets` column) is a real feature, not a cleanup.
+✅ **Geo filtering is wired into the runner (2026-08-02, DECISIONS #35).** The
+follow-up that used to live here is done: `search_run` filters each source
+through `core.location_filters.filter_by_regions` before dedupe, using
+`searches.markets` (union) with `TARGET_REGION` as the fallback, and reports
+`filtered_out` per source instead of dropping silently. `markets` had been a
+write-only column — accepted by the API, editable by the agent, exported to
+Sheets, read by nobody, and hardcoded to `[]` by the wizard.
+⚠️ **This changes YOUR results**: `data/credentials/.env` has
+`TARGET_REGION=Argentina-LATAM` → `latam`, so searches that don't name markets
+now drop roles locked outside LATAM (the run's `filtered_out` shows how many).
+Set `TARGET_REGION=worldwide` if you'd rather see everything — the value was
+inherited from the old `.env.example`, not chosen.
 
 Env / how to run (both servers, then open http://localhost:5173):
 - backend: `.venv\Scripts\python -m uvicorn api.main:app --port 8000` (Swagger `/docs`)

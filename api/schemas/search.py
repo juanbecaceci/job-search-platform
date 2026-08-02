@@ -52,6 +52,17 @@ class SourceDefault(BaseModel):
     enabled_default: bool
 
 
+class RegionDefault(BaseModel):
+    id: str
+    label: str
+
+
 class SearchDefaults(BaseModel):
     sources: list[SourceDefault]
     keyword_groups: dict[str, list[str]]
+    # Geography choices for `searches.markets`, served from core's REGIONS so
+    # the wizard never keeps its own copy of the list.
+    regions: list[RegionDefault] = []
+    # What an empty `markets` resolves to (`TARGET_REGION`), so the UI can say
+    # "defaults to X" instead of implying no filtering.
+    default_region: str = "worldwide"

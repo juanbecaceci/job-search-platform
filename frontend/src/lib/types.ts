@@ -177,6 +177,10 @@ export interface SearchDetail extends Search {
 export interface SearchDefaults {
   sources: { id: string; label: string; enabled_default: boolean }[];
   keyword_groups: Record<string, string[]>;
+  /** Choices for `Search.markets`, served from core's REGIONS table. */
+  regions: { id: string; label: string }[];
+  /** What an empty `markets` falls back to (the TARGET_REGION env var). */
+  default_region: string;
 }
 
 export interface Job {

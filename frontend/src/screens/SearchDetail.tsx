@@ -8,7 +8,7 @@ import { fmtScore, fmtDateTime } from "@/lib/format";
 import { Card, Eyebrow, StatTile, Loading, ErrorNote, ScoreBadge, StatusChip, Badge, Button } from "@/components/ui";
 import type { PositionCard } from "@/lib/types";
 
-type SourceStat = { fetched?: number; new?: number; duplicates?: number; errors?: number; skipped?: number };
+type SourceStat = { fetched?: number; new?: number; duplicates?: number; errors?: number; skipped?: number; filtered_out?: number };
 
 export default function SearchDetail() {
   const { id } = useParams();
@@ -91,8 +91,8 @@ export default function SearchDetail() {
 
       <Card style={{ marginBottom: 20 }}>
         <Eyebrow style={{ fontWeight: 600, marginBottom: 12 }}>Per-source results</Eyebrow>
-        <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 1fr 1fr", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--border-subtle)" }}>
-          {["Source", "Fetched", "New", "Duplicates", "Errors"].map((h) => (
+        <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 1fr", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+          {["Source", "Fetched", "New", "Duplicates", "Filtered", "Errors"].map((h) => (
             <span key={h} style={{ fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
               {h}
             </span>
@@ -104,12 +104,19 @@ export default function SearchDetail() {
         {Object.entries(sourceStats).map(([name, st]) => (
           <div
             key={name}
-            style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 1fr 1fr", gap: 10, padding: "9px 0", borderBottom: "1px solid var(--border-subtle)", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--text-primary)" }}
+            style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 1fr", gap: 10, padding: "9px 0", borderBottom: "1px solid var(--border-subtle)", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--text-primary)" }}
           >
             <span style={{ color: "var(--text-secondary)" }}>{name}</span>
             <span>{st.skipped ? "—" : (st.fetched ?? 0)}</span>
             <span>{st.new ?? 0}</span>
             <span>{st.duplicates ?? 0}</span>
+            {/* Out-of-market drops are muted, not red: they're the filter working. */}
+            <span
+              style={{ color: st.filtered_out ? "var(--text-secondary)" : "var(--text-tertiary)" }}
+              title={st.filtered_out ? "Dropped — outside this search's markets" : undefined}
+            >
+              {st.filtered_out ?? 0}
+            </span>
             <span style={{ color: st.errors ? "var(--status-negative)" : "var(--text-primary)" }}>{st.skipped ? "skip" : (st.errors ?? 0)}</span>
           </div>
         ))}
