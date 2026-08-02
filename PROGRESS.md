@@ -59,33 +59,24 @@ The audit landed as `e5076f1`, and **the secrets sweep was re-run against it**
 — all six checks clean on the committed tree, so the tick below now covers
 `e5076f1`, not just `4e78215`.
 
-**PUBLISHED 2026-08-02** → https://github.com/juanbecaceci/job-search-platform
-`stage5-complete` was pushed as `origin/main` (tip `f5dc1d2`) after the six
-mechanical checks passed against that exact commit. Verified on the remote: only
-`main` exists, its root is `3dc75c5` with no parents, `data/` contributes 0
-paths, and the commit author is the GitHub noreply address, not a personal
-email. `stage5-complete` now **tracks `origin/main`**, so a bare `git push`
-publishes.
-⚠️ THE `--all` TRAP IS STILL LIVE, and now it has a remote to fire at. Never
-`git push --all` / `--mirror`; push explicit refspecs only.
-`backup/pre-squash-20260731` was **deleted 2026-08-02** (was `097c68f`) — safe,
-because its tree differs from the published root `3dc75c5` by a single
-`PROGRESS.md` line, so no content was lost, only granular history. Its 4
-exclusive commits (`097c68f`, `a29d6ac`, `b77f4bd`, `ce4c31a`) are recoverable
-from the reflog until it expires (~30–90 days): `git branch <name> 097c68f`.
-**But the trap is not closed**: local `main` (`922e5e1`) still carries
-`3948e07`, which names the author in 3 files. Deleting `backup` removed
-`ce4c31a` (4 files) from any branch; `main` is the remaining one. Delete or
-rewrite local `main` to close this for good — it has no other purpose now that
-`stage5-complete` tracks `origin/main`.
+**PUBLISHED 2026-08-02, and the repo is PUBLIC** →
+https://github.com/juanbecaceci/job-search-platform
+**Resume point: publication is done. There is no pending release work.** Pick up
+from the "Known follow-ups" below, or from whatever the next feature is.
 
-**Resume point (superseded): nothing was blocking publication but Juan's
-go-ahead.** The action was adding a remote and pushing — and it has a trap worth
-re-reading in the git-state note below: **push `stage5-complete` alone**
-(`git push -u origin stage5-complete:main`), never `--all`/`--mirror`, because
-`main` and `backup/pre-squash-20260731` still carry the author's name in their
-history. Re-run the sweep's mechanical checks if anything else gets committed
-first; the tick covers `4e78215` only.
+Audited against a **fresh clone of the public repo**, scanning **all 9 commits**
+(every version of every file, 157 paths ever added) — not just the tip, which is
+what every earlier sweep had checked. Clean on every axis: 0 paths ever under
+`data/`, 0 credential/token/key/DB files, 0 private keys or API keys, 0
+`client_secret`/`refresh_token` values, 0 absolute local paths, 0 phone numbers,
+and every opaque-looking id traced to npm integrity hashes in
+`package-lock.json`. `.env.example` carries only neutral defaults in every
+historical version. Largest blobs are `package-lock.json` (64 KB) and
+`PROGRESS.md` — no binaries, no data dumps.
+What IS public, deliberately: the author's name (`LICENSE`, commit metadata, and
+this file's citation of the repo URL) and the GitHub `users.noreply` alias in
+commit metadata plus one superseded `PROGRESS_LOG.md` blob. The personal
+`@gmail.com` appears nowhere, in neither files nor metadata.
 
 ✅ Google is authorized (2026-07-29): one token with Sheets+Drive scopes in
 `data/credentials/token.json`, and `GOOGLE_DRIVE_FOLDER_ID` set in that folder's
@@ -98,21 +89,18 @@ back to its original 5 items.
 Google features are now proven end-to-end. `sheets_export_enabled` is ON in
 settings, so the "Export now" button in Settings works from the UI.
 
-Git state (re-verified 2026-08-02): **`stage5-complete` is a single root commit**
-`3dc75c5` — the squash already happened on 2026-07-31, and the pre-squash history
-is preserved locally on `backup/pre-squash-20260731` (10 commits, tip `097c68f`).
-`main` still points at the OLD history (`922e5e1`, 6 commits). **No remote is
-configured** — nothing has been pushed, pending Juan's go-ahead and the last
-Pre-publish item below.
-⚠️ Consequence for publishing: only `stage5-complete`'s tree is clean (the sole
-file naming the author is `LICENSE`, as intended). `main` and the backup branch
-still carry the author's name in their history — `3948e07` in 3 files, `ce4c31a`
-in 4. **Push `stage5-complete` alone** (e.g. `git push -u origin
-stage5-complete:main`); never `git push --all` / `--mirror`, which would publish
-both other refs. Working tree: `frontend/design-reference/` is now gitignored
-(verified via `git check-ignore`), leaving `workflows/00_first_run.md` as the
-only untracked path — a real new file from the 2026-07-31 session, to be
-committed, not ignored.
+Git state (2026-08-02, post-publication): **one branch, `main`, tracking
+`origin/main`** — renamed from `stage5-complete` after the push, so local and
+remote finally share a name. A bare `git push` publishes. History is 9 commits
+from the root `3dc75c5` (no parents; the squash happened 2026-07-31).
+✅ **The `--all` trap is closed.** It mattered while two name-bearing branches
+existed locally; both were deleted 2026-08-02 after checking each one rather
+than assuming — `backup/pre-squash-20260731` (`097c68f`) differed from the
+published root by a single `PROGRESS.md` line, and old `main` (`922e5e1`) held
+nothing the published tree lacks except the two dead files deleted that day.
+Both stay reflog-recoverable for ~30–90 days: `git branch <name> 097c68f` /
+`922e5e1`. No local ref carries `3948e07` or `ce4c31a` any more, so `--all` has
+nothing left to leak — but explicit refspecs are still the habit worth keeping.
 
 ⚠️ Routes and job handlers are registered at **startup** — restart uvicorn after
 any change under `api/routers/` or `api/jobs/handlers/`, or a long-lived server
@@ -754,3 +742,9 @@ region/role-agnostic and easy to onboard.
       or `--mirror`. Decide separately whether to keep the backup branch at all
       once the repo is public. DECISIONS #7 kept this history free of the
       *private repo's* data; this is about the author's own name.
+      ↳ **RESOLVED 2026-08-02 — the paragraph above is history, not
+      instruction.** The push happened exactly as prescribed
+      (`stage5-complete:main`, explicit refspec), then both name-bearing
+      branches were deleted and `stage5-complete` was renamed to `main`. One
+      branch now exists locally and it tracks `origin/main`. See the git-state
+      note at the top of this file for the current picture.

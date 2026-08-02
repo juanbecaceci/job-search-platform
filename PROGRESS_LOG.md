@@ -7,6 +7,27 @@
 
 ---
 
+- 2026-08-02 — **Repo is public; audited the published result, then renamed the
+  local branch to `main`.** The audit ran against a **fresh clone of the public
+  repo** and scanned **all 9 commits** — every version of every file, 157 paths
+  ever added — which is the check every earlier sweep had missed: they all read
+  the tip, and a file committed then deleted still lives in history. Clean on
+  every axis (0 paths ever under `data/`, 0 credential/key/DB files, 0 API keys
+  or private keys, 0 absolute local paths, `.env.example` neutral in every
+  historical version, largest blob is `package-lock.json`). The opaque-looking
+  ids were all traced to npm integrity hashes rather than waved off. Two things
+  are public by design and were reported as such rather than as "zero findings":
+  the author's name (`LICENSE`, commit metadata, the repo URL cited in the docs)
+  and the GitHub `users.noreply` alias — the personal `@gmail.com` appears
+  nowhere. Then `git branch -m stage5-complete main`: tracking survived the
+  rename, so local and remote share a name at last. `PROGRESS.md`'s git-state
+  and publication blocks were rewritten rather than patched — they had grown
+  into layered warnings about traps that no longer exist ("No remote is
+  configured", "push `stage5-complete` alone"), and renaming branches inside
+  stale advice would have preserved the staleness. The closed Pre-publish entry
+  keeps its original text with a RESOLVED pointer, since that section is a
+  record. Also deduped the surname-baseline note, which had ended up in two
+  places — the usual way two notes start disagreeing.
 - 2026-08-02 — **Deleted local `main`** (was `922e5e1`), closing the `--all`
   trap for good: no local ref carries `3948e07` / `ce4c31a` any more, and the
   only branch left is `stage5-complete`, tracking `origin/main`. Checked first:
