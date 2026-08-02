@@ -7,6 +7,16 @@
 
 ---
 
+- 2026-08-02 — **README status refreshed before creating the GitHub repo.** Its
+  status blockquote still said "Remaining before a public release: first-run
+  onboarding docs and a final secrets sweep" and the roadmap still had
+  `- [ ] final secrets sweep, design-source decision` — both closed days ago.
+  Left as they were, the first thing a visitor read would have been "this may
+  still contain secrets", the opposite of what six checks verified. Now: status
+  says feature-complete and ready to clone (naming `00_first_run.md` and the
+  closed checklist), and the roadmap line is ticked with *why* the design
+  prototype isn't shipped. Swept the rest of the README for the same failure
+  mode — no other stale claim, no unchecked boxes left.
 - 2026-08-02 — **Harness audit before adding the remote** (asked for as a
   pre-push check, and it earned its keep). Structure was sound: the 4
   `CLAUDE.md` files exist and are cross-referenced, 0 broken markdown links

@@ -2,7 +2,7 @@
 
 A **self-hosted, AI-powered job search platform**. Discover jobs from multiple sources, evaluate and score them against *your* profile, generate tailored ATS-ready CVs and cover letters, and manage your application pipeline — all running locally, with the AI reasoning powered by **your own agent CLI subscription** (Claude Code in v1). No API keys, no cloud backend, your data never leaves your machine.
 
-> **Status: feature-complete, pre-release.** The database, API, agent integration and web UI are all built and running against real data. Search geography is now fully configurable (see "Set your market"). Remaining before a public release: first-run onboarding docs and a final secrets sweep — see the roadmap below.
+> **Status: feature-complete and ready to clone.** The database, API, agent integration and web UI are all built and running against real data. Search geography is fully configurable with no region baked in (see "Set your market"), the first-run guide is in place (`workflows/00_first_run.md`), and the pre-publish checklist is closed. Single-user by design; v1 ships the Claude Code adapter only, behind an interface built for others.
 
 ## How it works
 
@@ -196,7 +196,7 @@ See `PLATFORM_SPEC.md` for the complete design contract.
 - [x] **Stage 5** — Web UI integration + onboarding wizard
 - [x] **Pre-release** — configurable search geography (no region baked into the code)
 - [x] **Pre-release** — first-run guide + agent workflows migrated to the platform
-- [ ] **Pre-release** — final secrets sweep, design-source decision
+- [x] **Pre-release** — final secrets sweep passed; the design prototype is deliberately not shipped (`frontend/src/styles/tokens.css` is the design source of record)
 
 ## Privacy & safety
 
