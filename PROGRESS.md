@@ -61,10 +61,18 @@ mechanical checks passed against that exact commit. Verified on the remote: only
 paths, and the commit author is the GitHub noreply address, not a personal
 email. `stage5-complete` now **tracks `origin/main`**, so a bare `git push`
 publishes.
-⚠️ THE `--all` TRAP IS STILL LIVE, and now it has a remote to fire at: local
-`main` (`922e5e1`) and `backup/pre-squash-20260731` still carry the author's
-name in their history. Never `git push --all` / `--mirror`. Push explicit
-refspecs only. Still open: decide whether to keep that backup branch at all.
+⚠️ THE `--all` TRAP IS STILL LIVE, and now it has a remote to fire at. Never
+`git push --all` / `--mirror`; push explicit refspecs only.
+`backup/pre-squash-20260731` was **deleted 2026-08-02** (was `097c68f`) — safe,
+because its tree differs from the published root `3dc75c5` by a single
+`PROGRESS.md` line, so no content was lost, only granular history. Its 4
+exclusive commits (`097c68f`, `a29d6ac`, `b77f4bd`, `ce4c31a`) are recoverable
+from the reflog until it expires (~30–90 days): `git branch <name> 097c68f`.
+**But the trap is not closed**: local `main` (`922e5e1`) still carries
+`3948e07`, which names the author in 3 files. Deleting `backup` removed
+`ce4c31a` (4 files) from any branch; `main` is the remaining one. Delete or
+rewrite local `main` to close this for good — it has no other purpose now that
+`stage5-complete` tracks `origin/main`.
 
 **Resume point (superseded): nothing was blocking publication but Juan's
 go-ahead.** The action was adding a remote and pushing — and it has a trap worth

@@ -7,6 +7,18 @@
 
 ---
 
+- 2026-08-02 — **Deleted `backup/pre-squash-20260731`** (was `097c68f`), on
+  Juan's call, to shrink the `--all` blast radius now that a remote exists.
+  Checked before deleting rather than after: its tree differs from the published
+  root `3dc75c5` by **one line of `PROGRESS.md`**, so the branch held no content
+  the public repo lacks — only the granular 10-commit history, 4 commits of
+  which were exclusive to it (`097c68f`, `a29d6ac`, `b77f4bd`, `ce4c31a`). Those
+  are dangling but reflog-recoverable for ~30–90 days via
+  `git branch <name> 097c68f`. **The trap is only half closed**, which is worth
+  being explicit about: `ce4c31a` (author's name in 4 files) is now on no
+  branch, but local `main` (`922e5e1`) still carries `3948e07` (3 files). `main`
+  serves no purpose now that `stage5-complete` tracks `origin/main` — deleting
+  it is the step that actually ends this.
 - 2026-08-02 — **PUBLISHED.** `stage5-complete` pushed to
   https://github.com/juanbecaceci/job-search-platform as `origin/main`, tip
   `f5dc1d2`. Sequence: re-ran the six mechanical checks against that exact
