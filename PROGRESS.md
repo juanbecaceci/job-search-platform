@@ -37,6 +37,11 @@ also carries the 2026-07-31 workflow migration, and was **re-run clean against
 only in `LICENSE`. Commits after that one are docs-only, but **re-run the six
 mechanical checks against the actual tip right before pushing** rather than
 trusting this line; they take seconds.
+📌 Expected baseline for check #3 changed on publication: the surname now
+matches **3** tracked files, not 1 — `LICENSE`, plus `PROGRESS.md` and
+`PROGRESS_LOG.md`, which cite the repo's own public URL
+(`github.com/juanbecaceci/...`). That is the repo's address, not an exposure.
+A **4th** match is what warrants investigation.
 **A harness audit ran 2026-08-02, after that sweep** (see `PROGRESS_LOG.md`).
 Structure was sound — 4 `CLAUDE.md` files cross-referenced, 0 broken links,
 spec sections and directory layouts matching reality. It fixed four stale

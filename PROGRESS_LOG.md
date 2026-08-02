@@ -7,6 +7,20 @@
 
 ---
 
+- 2026-08-02 — **Deleted local `main`** (was `922e5e1`), closing the `--all`
+  trap for good: no local ref carries `3948e07` / `ce4c31a` any more, and the
+  only branch left is `stage5-complete`, tracking `origin/main`. Checked first:
+  the only tracked files `main` had that the published tree lacks were
+  `core/parse_profile.py` and `frontend/src/screens/Placeholder.tsx` — the two
+  dead files deliberately deleted earlier the same day — so nothing of value
+  went with it. Reflog-recoverable for now via `git branch <name> 922e5e1`.
+  ↳ Found while verifying: the surname check now matches **3** tracked files,
+  not 1. All three are self-inflicted and benign — `LICENSE`, plus the repo's
+  own public URL cited in `PROGRESS.md` and `PROGRESS_LOG.md`. The baseline is
+  recorded in `PROGRESS.md` so the next session doesn't read 3 as a regression.
+  One was worth fixing though: this log had spelled out the literal
+  `users.noreply` address, which check #4 (emails) does **not** exclude, so it
+  would have reported an email finding on every future sweep. Reworded.
 - 2026-08-02 — **Deleted `backup/pre-squash-20260731`** (was `097c68f`), on
   Juan's call, to shrink the `--all` blast radius now that a remote exists.
   Checked before deleting rather than after: its tree differs from the published
@@ -30,9 +44,10 @@
   the remote holds only `main`, `origin/main` == local HEAD, the published root
   is `3dc75c5` with no parents (no pre-squash history), and `data/` contributes
   0 paths. One thing the six checks never covered, checked separately and clean:
-  **commit author metadata** — the commits carry
-  `juan.becaceci@users.noreply.github.com`, not a personal email, so the file
-  content sweep wasn't hiding a leak in the header. `stage5-complete` now tracks
+  **commit author metadata** — the commits carry the GitHub `users.noreply`
+  address, not a personal one, so the file-content sweep wasn't hiding a leak in
+  the header. (Written without the literal address on purpose: spelling it out
+  makes check #4 of the sweep report an email finding forever after.) `stage5-complete` now tracks
   `origin/main`, which means the `--all` trap finally has a remote to fire at —
   local `main` and `backup/pre-squash-20260731` are still name-bearing.
 - 2026-08-02 — **README status refreshed before creating the GitHub repo.** Its
