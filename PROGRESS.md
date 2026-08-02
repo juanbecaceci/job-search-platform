@@ -33,6 +33,22 @@ record). See both items below.
 **The Pre-publish checklist is COMPLETE as of 2026-08-02.** The final secrets
 sweep passed against commit `4e78215` (six checks, on the committed tree), which
 also carries the 2026-07-31 workflow migration.
+**A harness audit ran 2026-08-02, after that sweep** (see `PROGRESS_LOG.md`).
+Structure was sound — 4 `CLAUDE.md` files cross-referenced, 0 broken links,
+spec sections and directory layouts matching reality. It fixed four stale
+claims (root `CLAUDE.md` said DECISIONS `#1–#26`, now `#1–#34`, and still called
+the Pre-publish checklist pending; `core/CLAUDE.md` undercounted `core/` at 13
+modules) and one real gap: **`workflows/07_interview_prep.md` was orphaned** —
+never mapped in `_MODULE_WORKFLOWS`, so it never reached the agent. It is now
+mapped to the **`positions`** module (`Interview Scheduled` is a position
+status). All 8 workflows are reachable and all 8 module prompts assemble.
+It also **deleted two dead files** — `core/parse_profile.py` (superseded by
+`api/jobs/handlers/import_cv.py`) and `frontend/src/screens/Placeholder.tsx` —
+after verifying nothing references them; `requirements.txt` is unchanged and
+`vite build` still reports 104 modules.
+⚠️ These are commits **after** `4e78215`, so the secrets-sweep tick below needs
+its mechanical checks re-run before pushing — they take seconds.
+
 **Resume point: nothing is blocking publication but Juan's go-ahead.** The one
 remaining action is adding a remote and pushing — and it has a trap worth
 re-reading in the git-state note below: **push `stage5-complete` alone**

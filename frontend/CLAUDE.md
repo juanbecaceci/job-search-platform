@@ -50,8 +50,9 @@ frontend/
     └── screens/            # one file per route in App.tsx
 ```
 
-`screens/Placeholder.tsx` is a leftover scaffold — no route uses it. Delete it
-rather than wiring a new screen through it.
+Every file in `screens/` is routed from `App.tsx`; there is no scaffold screen to
+wire a new route through (the leftover `Placeholder.tsx` was deleted 2026-08-02).
+A new screen gets its own file plus a route.
 
 ## Non-negotiable conventions
 

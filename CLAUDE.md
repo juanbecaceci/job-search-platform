@@ -1,15 +1,17 @@
 # Agent Instructions — Job Search Platform
 
-Self-hosted, single-user job search platform. **Stages 0–5 are complete** (spec →
-SQLite + read API → write ops + async jobs → agent adapter → frontend); what's
-left is the Pre-publish checklist in `PROGRESS.md`.
+Self-hosted, single-user job search platform. **Stages 0–5 and the Pre-publish
+checklist are complete** (spec → SQLite + read API → write ops + async jobs →
+agent adapter → frontend → publish-readiness); the only open action is adding a
+remote and pushing — see the resume point in `PROGRESS.md`, which has a trap
+about *which* refs may be pushed.
 
 ## Which file answers what — open only what you need
 
 | You need | File | How to use it |
 |---|---|---|
 | Current stage, resume point, how to run, real-data state | [PROGRESS.md](PROGRESS.md) | **read first, every session**; update it the moment you finish a task |
-| Settled architectural calls (#1–#26) | [DECISIONS.md](DECISIONS.md) | check before proposing anything different; cite the entry number to reopen one |
+| Settled architectural calls (#1–#34) | [DECISIONS.md](DECISIONS.md) | check before proposing anything different; cite the entry number to reopen one |
 | Data model, API paths, SSE events, view map | [PLATFORM_SPEC.md](PLATFORM_SPEC.md) | **never read end to end** — jump to §3 enums, §4 entity shapes, §5 API reference, §6 SSE, §7 global shell, §8 view map, §9 UX rules |
 | Backend layout + conventions | [api/CLAUDE.md](api/CLAUDE.md) | before writing anything in `api/` |
 | Deterministic-tools rules | [core/CLAUDE.md](core/CLAUDE.md) | before writing anything in `core/` |

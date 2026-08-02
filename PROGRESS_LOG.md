@@ -7,6 +7,43 @@
 
 ---
 
+- 2026-08-02 — **Harness audit before adding the remote** (asked for as a
+  pre-push check, and it earned its keep). Structure was sound: the 4
+  `CLAUDE.md` files exist and are cross-referenced, 0 broken markdown links
+  across the 9 docs, `PLATFORM_SPEC.md` §3–§9 match what the routing table
+  promises, `api/`+`core/`+`frontend/` layouts match the real trees file by
+  file, and nothing stale ships (0 tracked `__pycache__`/`.pyc`, 157 files).
+  Four staleness bugs fixed: root `CLAUDE.md` advertised DECISIONS **#1–#26**
+  when there are **34** (the missing 8 are the MCP/Indeed/LinkedIn/geography
+  calls — exactly the ones a new session would re-debate) and still said the
+  Pre-publish checklist was pending; `core/CLAUDE.md` said `google_auth.py` was
+  the only module written rather than ported (`env_config.py` is the second, 14
+  modules now). **The real find: `workflows/07_interview_prep.md` was orphaned**
+  — no module mapped it in `_MODULE_WORKFLOWS`, no `interview` value in the
+  `Module` enum, zero references anywhere, so an SOP that was written *and*
+  migrated in the 2026-07-31 pass never reached the agent, while `CLAUDE.md` and
+  the README both claimed every workflow is injected. Juan's call: map it to
+  **`positions`**, since `Interview Scheduled` is a position status and prep is
+  asked for from a position's chat. Verified: all 8 workflows now reachable, no
+  ghost filenames, `_MODULE_WORKFLOWS` keys ↔ `Module` enum agree both ways, and
+  all 8 module prompts assemble against an in-memory DB with the output protocol
+  intact. Cost noted: the `positions` prompt goes 11.4k → 16.4k chars per turn.
+  **Two dead files deleted** in the same pass, once Juan confirmed: 
+  `core/parse_profile.py` (extracted CV text so a human could paste it into a
+  chat that wrote `context/professional_profile.md` — a pre-platform flow;
+  `api/jobs/handlers/import_cv.py` replaced it with the same `pypdf` extraction
+  plus a `pending_changes` proposal, and its docstring still taught `context/raw/`
+  + `.tmp/` paths that don't exist here) and
+  `frontend/src/screens/Placeholder.tsx` ("This screen is being wired up next",
+  with all 14 wired). Both verified unreferenced first, including `core/`'s
+  sibling-import style. `requirements.txt` is unchanged — `pypdf` is still used
+  by `import_cv.py` and `python-docx` by `generate_cv.py` /
+  `generate_cover_letter.py`. Verified after: all 13 `core/` modules import,
+  `api.main` imports, `tsc -b --noEmit` clean, `vite build` clean at **104
+  modules — the same count as before**, which is itself the proof `Placeholder`
+  was never in the graph. `core/CLAUDE.md` now says 13 modules (11 ported + 2
+  written here) and records why `parse_profile.py` must not come back;
+  `frontend/CLAUDE.md`'s "delete it rather than wiring through it" note is gone.
 - 2026-08-02 — Committed everything (`4e78215`: the 2026-07-31 workflow
   migration + both of today's items) and ran the **final secrets sweep on the
   committed tree**, which closes the Pre-publish checklist. Six checks clean: no

@@ -1,10 +1,18 @@
 # core/ — deterministic tools
 
-12 of these files were ported verbatim from a private production job-search
+13 modules. Eleven were ported verbatim from a private production job-search
 tracker on 2026-07-10, then genericized (all personal names, employers, metrics,
 and past-run details removed or replaced — verified via `git grep` before the
-first commit, see repo root commit `cd2ee06`). `google_auth.py` is the one
-module written here rather than ported (added 2026-07-29, DECISIONS #23).
+first commit, see repo root commit `cd2ee06`). Two were written here rather than
+ported: `google_auth.py` (2026-07-29, DECISIONS #23) and `env_config.py`
+(2026-07-31, see the env-loading rule below).
+
+A twelfth ported file, `parse_profile.py`, was **deleted on 2026-08-02**: it
+extracted CV text so a human could paste it into a chat that wrote
+`context/professional_profile.md` — a pre-platform flow whose replacement is
+`api/jobs/handlers/import_cv.py` (same `pypdf` extraction, then the agent
+proposes `pending_changes`). Don't restore it; if you need CV text extraction,
+that handler is the reference.
 
 `api/jobs/handlers/*` imports these modules **directly, in-process** — no
 subprocess calls to the Python tools (subprocess is reserved for invoking the

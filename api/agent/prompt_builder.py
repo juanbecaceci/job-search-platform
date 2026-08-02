@@ -34,7 +34,10 @@ _MODULE_WORKFLOWS: dict[str, list[str]] = {
     "onboarding": ["00_first_run.md", "01_build_profile.md"],
     "searches": ["02_configure_search.md", "03_discover_jobs.md"],
     "scoring": ["04_evaluate_rank.md"],
-    "positions": ["04_evaluate_rank.md"],
+    # `positions` also carries the interview SOP: `Interview Scheduled` is a
+    # position status, so prep is asked for from a position's chat — there is
+    # no separate interview module.
+    "positions": ["04_evaluate_rank.md", "07_interview_prep.md"],
     "documents": ["05_generate_documents.md", "06_research_company.md"],
     "analytics": [],
     "templates": ["05_generate_documents.md"],
