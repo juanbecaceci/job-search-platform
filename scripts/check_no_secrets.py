@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Pre-commit safety check: block commits containing user data or secrets.
+"""Safety check: block commits containing user data or secrets.
 
-Fails if any staged file:
+Fails if any inspected file:
   - lives under data/ (should be gitignored; belt and suspenders)
   - is a credentials/token/db file anywhere in the tree
   - contains obvious secret patterns (private keys, OAuth client secrets)
 
-Install as a git hook:
+Install as a git hook (inspects staged files):
   py scripts/check_no_secrets.py --install
+
+Sweep the whole tracked tree instead (what CI runs):
+  py scripts/check_no_secrets.py --all
 """
 from __future__ import annotations
 
@@ -39,6 +42,14 @@ def staged_files() -> list[str]:
     return [f for f in out.stdout.splitlines() if f.strip()]
 
 
+def tracked_files() -> list[str]:
+    """Every file in the tree, for `--all`."""
+    out = subprocess.run(
+        ["git", "ls-files"], capture_output=True, text=True, check=True
+    )
+    return [f for f in out.stdout.splitlines() if f.strip()]
+
+
 def main() -> int:
     if "--install" in sys.argv:
         hook = Path(".git/hooks/pre-commit")
@@ -46,8 +57,13 @@ def main() -> int:
         print(f"Installed pre-commit hook at {hook}")
         return 0
 
+    # As a hook this checks what's staged. CI has nothing staged, so it needs
+    # `--all` — otherwise the job passes without inspecting a single file.
+    scan_all = "--all" in sys.argv
+    files = tracked_files() if scan_all else staged_files()
+
     errors: list[str] = []
-    for f in staged_files():
+    for f in files:
         if any(f.startswith(d) for d in FORBIDDEN_DIRS):
             errors.append(f"{f}: files under {f.split('/')[0]}/ must never be committed")
             continue
@@ -66,10 +82,13 @@ def main() -> int:
                     break
 
     if errors:
-        print("COMMIT BLOCKED — potential secrets or user data staged:", file=sys.stderr)
+        label = "tracked in the repo" if scan_all else "staged"
+        print(f"BLOCKED — potential secrets or user data {label}:", file=sys.stderr)
         for e in errors:
             print(f"  - {e}", file=sys.stderr)
         return 1
+
+    print(f"check_no_secrets: {len(files)} file(s) scanned, clean.")
     return 0
 
 

@@ -1,0 +1,9 @@
+# Development / CI dependencies. Not needed to run the platform.
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pytest
+
+-r requirements.txt
+
+pytest>=8.0
+# Exercises the FastAPI app through its real routes (needs httpx).
+httpx

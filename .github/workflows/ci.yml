@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch cancels the first — no point finishing a run
+# for a commit that's already superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the floor the README promises; 3.13 catches deprecations early.
+        # Dependencies are unpinned, so both ends are worth running.
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest
+
+  frontend:
+    name: typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  migrations:
+    name: migrations apply cleanly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # A migration that only ever runs on a developer's existing database can
+      # break for a fresh clone without anyone noticing. This is the first-run
+      # path from the README, end to end, plus a downgrade to prove the chain
+      # is reversible.
+      - name: Build a database from scratch
+        env:
+          DB_PATH: /tmp/ci.db
+        run: |
+          alembic upgrade head
+          python scripts/seed_defaults.py
+          python scripts/seed_defaults.py   # idempotent: second run must be a no-op
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Seed the demo dataset
+        env:
+          DB_PATH: /tmp/app-demo.db
+        run: |
+          alembic upgrade head
+          python scripts/seed_defaults.py
+          python scripts/seed_demo.py
+
+  secrets:
+    name: no secrets or user data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The check walks `git ls-files`; a shallow clone is enough for that,
+          # but the full history makes the sweep meaningful if it ever grows to
+          # scan past revisions.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # `--all` matters: without it the script inspects staged files, and CI has
+      # none — the job would pass having read nothing.
+      - name: Sweep the tracked tree
+        run: python scripts/check_no_secrets.py --all
