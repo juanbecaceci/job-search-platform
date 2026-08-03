@@ -1,8 +1,8 @@
 # frontend/ — React SPA
 
-Built through Stage 5 (all 14 screens wired to the live API); see root
-`PROGRESS.md` for the resume point. Read this before writing code here — several
-conventions are deliberate and look like mistakes if you don't know why.
+Built through Stage 5 (all 14 screens wired to the live API); see
+`docs/PROGRESS.md` for the resume point. Read this before writing code here —
+several conventions are deliberate and look like mistakes if you don't know why.
 
 ## Before writing code
 
@@ -96,5 +96,5 @@ overflow, in both themes.
 
 ## When you finish a milestone
 
-Update `PROGRESS.md` at the repo root (tick the item, move the resume point) and
-append one line to `PROGRESS_LOG.md`.
+Update `docs/PROGRESS.md` (tick the item, move the resume point) and append one
+line to `docs/PROGRESS_LOG.md`.

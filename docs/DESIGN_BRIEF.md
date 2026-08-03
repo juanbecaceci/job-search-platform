@@ -40,7 +40,7 @@ Everything else stays visually quiet so these three moments stand out.
 - ONE brand accent color, used sparingly (primary actions + the agent-proposal
   treatment).
 - Semantic score scale, used consistently everywhere a score appears:
-  EXCELENTE (80–100) / BUENA (60–79) / ACEPTABLE (45–59) / DESCARTAR (0–44),
+  EXCELLENT (80–100) / GOOD (60–79) / ACCEPTABLE (45–59) / DISCARD (0–44),
   plus a neutral for unevaluated. Score is always shown 0–100.
 - Pipeline status chips: one consistent chip system for the 15 states; terminal
   states (Rejected / Withdrawn / Ghosted) are always muted/desaturated.

@@ -64,6 +64,80 @@ https://github.com/juanbecaceci/job-search-platform
 **Resume point: publication is done. There is no pending release work.** Pick up
 from the "Known follow-ups" below, or from whatever the next feature is.
 
+**Presentation pass started 2026-08-02** (the repo is now being shown to
+recruiters, so how it *reads* is the active work). Done so far: screenshots.
+`docs/screenshots/` holds all 14 screens plus the changes tray and agent drawer,
+light and dark (32 PNGs, 4.9 MB, Playwright at 1.5x), rendered from
+`scripts/seed_demo.py` — a synthetic dataset, never from `data/app.db`, which
+holds a real search (DECISIONS #36). The README now opens with them. Note the
+demo DB lives at `data/app-demo.db`, gitignored like everything under `data/`;
+rebuild it with `DB_PATH=data/app-demo.db` + `alembic upgrade head` +
+`seed_defaults.py` + `seed_demo.py --force`.
+**Three defects found while reviewing the captures were fixed 2026-08-02:**
+(a) `PositionCard` now carries `date_discovered`, so the positions table's
+`Discovered` column populates instead of rendering an em dash on every row —
+spec §5 updated to list the compact-card fields; (b) dates are formatted in a
+pinned `en-GB` locale in `frontend/src/lib/format.ts` — the earlier "1 ago,
+20:31" was **not** a formatting bug but `toLocaleString(undefined, …)`
+inheriting a Spanish OS locale, which put Spanish month names in an English UI;
+(c) the user-facing Spanish is gone — see DECISIONS #37 and the migration
+`a3f1c9d47b20`. **If you pull this and have an existing DB, run
+`alembic upgrade head`** — the score bands stored in your rows are rewritten in
+place. Verified on a copy of the real `app.db` (539 positions, all six values,
+3 config versions): counts preserved exactly, and `downgrade` round-trips.
+**Tests and CI landed 2026-08-02.** `tests/` holds 105 pytest tests (under a
+second, no network/DB file/agent): `change_applier` whitelists and versioning,
+the agent protocol catalog cross-check that `api/CLAUDE.md` has described since
+Stage 4 but never had, the scoring formula and band boundaries, and the region
+filters including the DECISIONS #35 asymmetry. Run `pip install -r
+requirements-dev.txt` then `pytest`. **The suite was mutation-checked** — five
+injected regressions, five caught (see `PROGRESS_LOG.md` for the list); redo
+that rather than trusting the count if you add coverage.
+`.github/workflows/ci.yml` runs pytest on 3.11 + 3.13, frontend typecheck +
+build, a from-zero migration rebuild (`upgrade head` → seed twice → `downgrade
+base` → `upgrade head`) and the secrets sweep. **`check_no_secrets.py` gained
+`--all`**: as a hook it reads staged files, and CI has none, so without it that
+job would have passed having inspected zero files.
+**The README was restructured 2026-08-02** to open with the design ideas rather
+than the install steps: hero screenshot → "How it's built" (five numbered ideas,
+each pointing at the file that implements it) → "For reviewers — the 5-minute
+tour" (a 4-row table naming what to open) → screenshots → features → tests →
+setup. The LinkedIn and Indeed setup notes moved into `<details>` blocks; no
+content was cut. Setup now starts 45% down instead of 30%, and the design
+material comes first. All 20 local links verified to resolve.
+**The presentation pass closed 2026-08-02**, except for two steps that can only
+be done by hand in the GitHub UI (below). Landed since the README rewrite:
+- **This file, `PROGRESS_LOG.md` and `DESIGN_BRIEF.md` moved into `docs/`**
+  (`git mv`, history preserved). Root now holds only what a visitor needs:
+  `README.md`, `DECISIONS.md`, `PLATFORM_SPEC.md`, `LICENSE` + `CLAUDE.md`,
+  which must stay there for the harness. Every cross-reference was rewritten,
+  including prose mentions the link checker can't see.
+- **`tests/test_docs_links.py`** — asserts every relative markdown link in every
+  tracked `.md` resolves. Written *before* fixing the move, so it produced the
+  list. It skips fenced code blocks and `{{PLACEHOLDER}}` targets (the CV and
+  cover-letter templates in `config/defaults/` are documents-to-render, not docs).
+- **`requirements.txt` pinned** to exact versions and translated to English.
+  Each pin was checked against `Requires-Python` for 3.11 compatibility before
+  pinning — all fine, floor is `>=3.10` at worst.
+- **`tests/test_claude_adapter_parser.py`** — 12 tests over the NDJSON parser.
+  The one that matters: a stream that never sends a `result` line must still
+  yield a terminal event, because chat and every job handler block waiting for
+  one. Without it a CLI crash mid-answer hangs a request instead of failing it.
+- **`docs/social-preview.png`** — 1280×640 at 2x, rendered by Playwright from
+  an HTML card using the palette in `frontend/src/styles/tokens.css`. The source
+  is not committed; re-render from `docs/PROGRESS_LOG.md` if it needs changing.
+
+Suite is now **138 tests**. Note CI runs against pinned dependencies as of this
+pass, so a red build is your commit, not a dependency release.
+
+**Resume point — two manual steps left, both in the GitHub web UI:**
+1. **Settings → Social preview → upload `docs/social-preview.png`.** Without it
+   every link to this repo renders as a grey placeholder card.
+2. **Pin the repo** on the profile (Customize your pins). With 0 stars an
+   unpinned repo is effectively invisible.
+Optional third: create the `v1.0.0` tag/release once the current working tree is
+committed.
+
 Audited against a **fresh clone of the public repo**, scanning **all 9 commits**
 (every version of every file, 157 paths ever added) — not just the tip, which is
 what every earlier sweep had checked. Clean on every axis: 0 paths ever under

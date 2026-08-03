@@ -2,25 +2,31 @@
 
 Self-hosted, single-user job search platform. **Stages 0–5 and the Pre-publish
 checklist are complete** (spec → SQLite + read API → write ops + async jobs →
-agent adapter → frontend → publish-readiness); the only open action is adding a
-remote and pushing — see the resume point in `PROGRESS.md`, which has a trap
-about *which* refs may be pushed.
+agent adapter → frontend → publish-readiness), and the repo is **public** at
+https://github.com/juanbecaceci/job-search-platform. Work since publication has
+been presentation and hardening — screenshots, a test suite, CI. See the resume
+point in `docs/PROGRESS.md`.
+
+Root holds only what a visitor needs (`README.md`, `DECISIONS.md`,
+`PLATFORM_SPEC.md`, `LICENSE`) plus this file; the agent's own operating docs
+live in `docs/`.
 
 ## Which file answers what — open only what you need
 
 | You need | File | How to use it |
 |---|---|---|
-| Current stage, resume point, how to run, real-data state | [PROGRESS.md](PROGRESS.md) | **read first, every session**; update it the moment you finish a task |
-| Settled architectural calls (#1–#35) | [DECISIONS.md](DECISIONS.md) | check before proposing anything different; cite the entry number to reopen one |
+| Current stage, resume point, how to run, real-data state | [docs/PROGRESS.md](docs/PROGRESS.md) | **read first, every session**; update it the moment you finish a task |
+| Settled architectural calls (#1–#37) | [DECISIONS.md](DECISIONS.md) | check before proposing anything different; cite the entry number to reopen one |
 | Data model, API paths, SSE events, view map | [PLATFORM_SPEC.md](PLATFORM_SPEC.md) | **never read end to end** — jump to §3 enums, §4 entity shapes, §5 API reference, §6 SSE, §7 global shell, §8 view map, §9 UX rules |
 | Backend layout + conventions | [api/CLAUDE.md](api/CLAUDE.md) | before writing anything in `api/` |
 | Deterministic-tools rules | [core/CLAUDE.md](core/CLAUDE.md) | before writing anything in `core/` |
 | Frontend layout + styling conventions | [frontend/CLAUDE.md](frontend/CLAUDE.md) | before writing anything in `frontend/` |
-| "Why is it like this?" about a past change | [PROGRESS_LOG.md](PROGRESS_LOG.md) | append-only session history; **not** orientation reading |
-| Design system / prototype brief | [DESIGN_BRIEF.md](DESIGN_BRIEF.md) | design-only work |
+| "Why is it like this?" about a past change | [docs/PROGRESS_LOG.md](docs/PROGRESS_LOG.md) | append-only session history; **not** orientation reading |
+| Design system / prototype brief | [docs/DESIGN_BRIEF.md](docs/DESIGN_BRIEF.md) | design-only work |
 | The SOPs the agent itself follows per module | `workflows/*.md` | injected into chat prompts by `api/agent/prompt_builder.py` — read the one file for the module you're touching |
+| What's already guarded by a test | `tests/` | `pytest` (needs `requirements-dev.txt`). Run it before and after any change to `change_applier.py`, the scoring math or the prompt's protocol table |
 
-Don't reconstruct status from `git log`, and don't batch `PROGRESS.md` updates to
+Don't reconstruct status from `git log`, and don't batch `docs/PROGRESS.md` updates to
 the end of a session.
 
 ## What this is
@@ -67,13 +73,13 @@ React SPA (frontend/) ◄─HTTP+SSE─► FastAPI (api/) ◄─► SQLite (data
 
 ## Session checklist
 
-1. Read `PROGRESS.md` → confirm current stage and resume point.
+1. Read `docs/PROGRESS.md` → confirm current stage and resume point.
 2. Open only the directory `CLAUDE.md` and `PLATFORM_SPEC.md` section your task
    needs (see the table above).
 3. Check `DECISIONS.md` before proposing a different architecture.
 4. Do the work.
-5. Update `PROGRESS.md` (tick items, move the resume point) before ending the
+5. Update `docs/PROGRESS.md` (tick items, move the resume point) before ending the
    session — this is what saves the next session from re-deriving state. Append
-   one line to `PROGRESS_LOG.md`.
+   one line to `docs/PROGRESS_LOG.md`.
 6. If you made a new irreversible/architectural call, append it to
    `DECISIONS.md` in one line + rationale.

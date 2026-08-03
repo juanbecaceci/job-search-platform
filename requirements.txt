@@ -1,40 +1,45 @@
-# Job Search Automation — Python dependencies
-# Install:  pip install -r requirements.txt
-#           playwright install       # one-time, downloads browser binaries
-# Verified against the imports in tools/ (July 2026). Versions unpinned;
-# pin them once a working environment is confirmed to guarantee reproducibility.
-
-# NOTA: el razonamiento con LLM lo hace Claude Code en la conversación
-# (tokens de tu suscripción). Los tools son 100% determinísticos, por eso
-# NO hace falta el paquete `anthropic` ni una ANTHROPIC_API_KEY.
+# Job Search Platform — Python dependencies
+#
+# Install:
+#   pip install -r requirements.txt
+#   playwright install chromium      # one-time, downloads the browser binary
+#
+# Versions are pinned for reproducibility. Every pin below was checked to
+# support Python 3.11 — the floor the README promises — and CI installs them on
+# 3.11 and 3.13 on every push, so a bad bump fails there rather than on
+# someone's first clone.
+#
+# NOTE: LLM reasoning runs through the user's own agent CLI as a subprocess
+# (see api/agent/), on their subscription. That is why neither the `anthropic`
+# package nor an ANTHROPIC_API_KEY appears here, and why adding one would be a
+# design error rather than a convenience (DECISIONS #10). Everything in core/
+# is deterministic Python.
 
 # ─── Config / env ────────────────────────────────────────────
-python-dotenv
+python-dotenv==1.2.2
 
-# ─── Google Sheets / Drive (OAuth) ───────────────────────────
-google-api-python-client
-google-auth
-google-auth-oauthlib
+# ─── Google Sheets / Drive (OAuth) — optional at runtime ─────
+google-api-python-client==2.198.0
+google-auth==2.56.0
+google-auth-oauthlib==1.4.0
 
 # ─── HTTP + scraping ─────────────────────────────────────────
-requests
-beautifulsoup4
-playwright
+requests==2.34.2
+beautifulsoup4==4.15.0
+playwright==1.61.0
 
 # ─── Document generation (CV / cover letter) ─────────────────
-# PDF: se renderiza con Chromium (Playwright, ya arriba) vía print-to-pdf.
-# No se usa weasyprint porque en Windows requiere el runtime nativo de GTK/Pango.
-markdown
-python-docx
+# PDF is rendered by Chromium via print-to-pdf (Playwright, above). weasyprint
+# is deliberately not used: on Windows it needs the native GTK/Pango runtime.
+Markdown==3.10.2
+python-docx==1.2.0
 
-# ─── Profile parsing (PDF / DOCX ingestion) ──────────────────
-pypdf
+# ─── Profile parsing (CV ingestion) ──────────────────────────
+pypdf==6.14.2
 
-# ─── API backend (Stage 2+) ──────────────────────────────────
-# FastAPI app, SQLite ORM + migrations. No `anthropic` here either —
-# reasoning still runs through the user's own agent CLI (see api/agent/).
-fastapi
-uvicorn[standard]
-python-multipart          # multipart form uploads (chat attachments, CV import)
-sqlalchemy>=2.0
-alembic
+# ─── API backend ─────────────────────────────────────────────
+fastapi==0.139.2
+uvicorn[standard]==0.51.0
+python-multipart==0.0.32          # multipart uploads (chat attachments, CV import)
+SQLAlchemy==2.0.51
+alembic==1.18.5

@@ -2,11 +2,120 @@
 
 > Append-only session history, newest first. **Not** required reading — a
 > resuming session needs [PROGRESS.md](PROGRESS.md) (status + resume point) and
-> [DECISIONS.md](DECISIONS.md) (settled calls). Come here only to answer
+> [DECISIONS.md](../DECISIONS.md) (settled calls). Come here only to answer
 > "why is it like this?" about a specific past change.
 
 ---
 
+- 2026-08-02 — **Root cleanup, pinned deps, two more test modules, social card.**
+  `PROGRESS.md` / `PROGRESS_LOG.md` / `DESIGN_BRIEF.md` → `docs/` via `git mv`;
+  root is now `README.md`, `DECISIONS.md`, `PLATFORM_SPEC.md`, `LICENSE`,
+  `CLAUDE.md` (the harness requires that one in root) plus config. Order of
+  operations was deliberate: wrote **`tests/test_docs_links.py`** first, moved
+  the files, then let the failing test enumerate every broken reference — 5
+  files, plus 8 prose mentions the link checker *can't* see, found with grep.
+  Two link-checker false positives were real signal about the test, not the
+  docs: `config/defaults/*.md` are CV templates whose `[LinkedIn]({{LINKEDIN_URL}})`
+  is filled at render time, so `{{…}}` targets are now skipped.
+  Also fixed two stale claims in root `CLAUDE.md` while there: it still said the
+  only open action was "adding a remote and pushing" (published since), and
+  cited DECISIONS `#1–#35` (now #37).
+  **`requirements.txt` pinned and translated.** Checked `Requires-Python` on all
+  17 packages before pinning rather than assuming — none demand >3.11, so the
+  3.11 CI leg is safe. Dry-run install of both requirement files resolves.
+  **`tests/test_claude_adapter_parser.py`** (12 tests) covers the NDJSON→
+  AgentEvent parser, which had been documented as "unit-testable" since Stage 4
+  with no test. Beyond the happy path it pins the termination guarantee — an
+  empty stream, a truncated stream and a doubled `result` line each yield
+  exactly one terminal event — because a non-terminating parse hangs the caller
+  rather than erroring.
+  **`docs/social-preview.png`** rendered with Playwright from an HTML card
+  (1280×640 @2x, palette from `tokens.css`). First render put the URL on top of
+  the tech chips — absolute footer over flowed content; fixed by making the
+  footer a flex row of the body. Source HTML lives in the session scratchpad,
+  not the repo; recreate it if the card needs a change. Suite: **138 tests**.
+- 2026-08-02 — **README restructured to lead with design, not installation.**
+  It read as a user manual: what it is → how to install → 90 lines of
+  LinkedIn/Indeed configuration → roadmap, with nothing about *why the code is
+  shaped this way* until never. Rewritten as: pitch → hero screenshot → **How
+  it's built** (five numbered ideas — the HITL write gate, the agent-as-subprocess
+  with no API key, the determinism/judgment split, jobs+SSE, publishable-by-
+  construction — each linking the file that implements it) → **For reviewers —
+  the 5-minute tour** (a table naming `change_applier.py`, `prompt_builder.py` +
+  its catalog test, `DECISIONS.md`, `PROGRESS_LOG.md`) → screenshots → features
+  → tests → setup → layout. Setup moved from 30% to 45% down; LinkedIn and
+  Indeed setup collapsed into `<details>`. **No content was cut** — the market
+  settings, timing measurements and the `.mcp.json` rationale all survive.
+  Every factual claim added was re-verified against the code (`AgentAdapter` is
+  an ABC yielding `Iterator[AgentEvent]`; `claude_adapter` spawns a subprocess
+  and parses `--output-format stream-json` NDJSON with the prompt on stdin;
+  DECISIONS.md really has 37 entries; source count is 7, so "the other six" is
+  right in the Indeed section — the old text said "five", which had silently
+  excluded LinkedIn). All 20 local links checked to resolve.
+- 2026-08-02 — **First tests and CI.** 105 pytest tests in `tests/`, hermetic
+  (in-memory SQLite per test, `DATABASE_URL`/`AGENT_CLI_PATH` pinned in
+  `conftest` before any `api.*` import, no network). Four modules:
+  `test_change_applier.py` (whitelists tested for what they *refuse*, scoring
+  and template versioning, position history events, `edited_at` authorship,
+  stale-export invalidation), `test_agent_protocol_catalog.py` (parses the
+  writable-targets table out of `prompt_builder._OUTPUT_PROTOCOL` and
+  cross-checks it against `SUPPORTED_TARGETS` + the `_*_EDITABLE` sets both
+  ways — the test `api/CLAUDE.md` has described since Stage 4), `test_scoring.py`
+  and `test_location_filters.py`. **Mutation-checked, 5/5 caught:** widening
+  `_POSITION_EDITABLE` to include `score`; deleting `documents` from
+  `SUPPORTED_TARGETS`; `>=` → `>` on the band boundary; disabling the
+  weight-sum invariant; making `_authorship` always return `agent`.
+  `pytest.ini` puts both the repo root and `core/` on `pythonpath` — `core/`
+  modules import each other as siblings, so `from env_config import …` fails
+  otherwise (same fixup `search_run.py` does at runtime).
+  **`check_no_secrets.py` gained `--all`** (scan `git ls-files` instead of the
+  staged set): CI stages nothing, so the job was going to pass having read 0
+  files. Verified: staged mode reports 0 scanned, `--all` reports 155.
+  `.github/workflows/ci.yml` = pytest on 3.11/3.13 · frontend typecheck+build ·
+  a from-zero migration rebuild incl. `downgrade base` · the secrets sweep; the
+  migration and demo-seed jobs were simulated locally before committing the
+  workflow. ⚠️ One self-inflicted scare worth remembering: the mutation script
+  restored files with `Path.write_text`, which on Windows rewrites LF as CRLF —
+  `core/evaluate_position.py` came back byte-different (487 lines = 487 bytes)
+  and would have landed as a whole-file rewrite. Restored from a `cp` backup.
+  Use binary copies, not `write_text`, to restore.
+- 2026-08-02 — **Closed the three defects the screenshot review surfaced.**
+  (a) `PositionCard` gained `date_discovered` (`api/schemas/position.py`,
+  `frontend/src/lib/types.ts`, the table cell in `Positions.tsx`), so the
+  `Discovered` column stopped rendering an em dash on every row; spec §5 now
+  lists the compact-card fields. (b) Date formatting is pinned to `en-GB` in
+  `lib/format.ts`. **Correcting the previous entry: "1 ago, 20:31" was not a
+  formatting bug** — `toLocaleString(undefined, …)` inherits the OS locale, and
+  this machine is `es-ES`, so an English UI rendered Spanish month names;
+  measured in-browser before fixing. (c) All user-facing Spanish is gone
+  (DECISIONS #37): `ScoreCategory` → `EXCELLENT/GOOD/ACCEPTABLE/DISCARD`,
+  `SalaryGate.A_VALIDAR` → `NEEDS VALIDATION`, the two unnamed markers are now
+  constants (`BELOW SALARY FLOOR`, `NEEDS VALIDATION`), seeded criterion names
+  and the evaluator's `recommended_action` strings translated. Migration
+  `a3f1c9d47b20` rewrites stored values across `positions` and every
+  `scoring_configs` version; verified on a **copy** of the real `app.db` (539
+  positions — counts identical before/after, `downgrade` round-trips exactly),
+  never against the original. `normalize_salary_gate` keeps the Spanish
+  spellings as input aliases. `npm run typecheck` and `vite build` clean (104
+  modules); demo re-seeded and all 32 screenshots re-captured.
+- 2026-08-02 — **Screenshots for the README, from a synthetic dataset**
+  (DECISIONS #36). The repo had no images at all, so nothing showed that the 14
+  screens exist. Capturing from `data/app.db` was not an option — it holds a
+  real search (211 positions, live applications, the author's CV), and the most
+  compelling screens are the ones that leak the most. Added
+  `scripts/seed_demo.py`: invented companies/positions/profile/pending changes,
+  double-guarded against running anywhere but a throwaway DB. Captured all 14
+  screens (plus the changes tray and the agent drawer) in light and dark via
+  Playwright at 1.5x into `docs/screenshots/` (32 images, 4.9 MB), and rebuilt
+  the top of the README around them. Two pre-existing UI bugs surfaced while
+  reviewing the captures and were **left unfixed**, deliberately, since they
+  change the API contract: (a) the positions table renders a `Discovered`
+  column that can never populate — `PositionCard` carries no `date_discovered`
+  in either `api/schemas/position.py` or `frontend/src/lib/types.ts`; (b) the
+  searches list renders "1 ago, 20:31" for a last-run timestamp. Also worth a
+  decision someday: the seeded scoring criteria are Spanish (`Alineacion con el
+  perfil`, missing accent included) and `ScoreCategory` is Spanish end to end,
+  both user-facing, against the English-UI rule in `CLAUDE.md`.
 - 2026-08-02 — **Wired geo filtering into `search_run` and made
   `searches.markets` mean something** (DECISIONS #35). The column had been
   write-only: `POST /searches` accepted it, `change_applier` let the agent edit

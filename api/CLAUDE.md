@@ -1,6 +1,6 @@
 # api/ — FastAPI backend
 
-Built through Stage 5 (frontend integration); see root `PROGRESS.md` for the
+Built through Stage 5 (frontend integration); see `docs/PROGRESS.md` for the
 exact resume point. This file is the on-ramp for whoever picks up work here —
 read it before writing code in this directory.
 
@@ -123,6 +123,6 @@ proposal can also be rewritten before approval via `PATCH /changes/{id}`
 
 ## When you finish a milestone
 
-Update `PROGRESS.md` at the repo root (tick the item, move the resume point) and
-append one line to `PROGRESS_LOG.md`. Those files are what let the next session
+Update `docs/PROGRESS.md` (tick the item, move the resume point) and append one
+line to `docs/PROGRESS_LOG.md`. Those files are what let the next session
 start in seconds instead of re-deriving state from the codebase.

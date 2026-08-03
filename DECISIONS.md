@@ -66,14 +66,14 @@ This file exists so tokens don't get spent re-deriving conclusions already reach
     active per parent" at the service layer, not with a DB constraint.
 
 12. **The frontend styles with inline styles + CSS custom properties, NOT
-    Tailwind** (despite DESIGN_BRIEF.md saying "React + Tailwind"). The design
+    Tailwind** (despite `docs/DESIGN_BRIEF.md` saying "React + Tailwind"). The design
     delivered by the Claude Design session was built entirely with inline styles
     referencing brand CSS variables, so the React app ports that 1:1. Matching
     the delivered design exactly beat re-deriving it in a Tailwind theme. Don't
     add Tailwind later "to clean it up" — it would fork the styling system from
     the design source.
     **`frontend/src/styles/tokens.css` is the design source of record**, with
-    `DESIGN_BRIEF.md` for the intent behind it. The original prototype export
+    `docs/DESIGN_BRIEF.md` for the intent behind it. The original prototype export
     (`frontend/design-reference/design.html`) is **not shipped** and this repo
     does not depend on it (decided 2026-08-02, gitignored): it renders the
     author's name in 55 places — mostly the `<Name>DesignSystem_302711.*` global
@@ -423,3 +423,50 @@ This file exists so tokens don't get spent re-deriving conclusions already reach
     Region choices are served to the UI by `GET /searches/defaults`
     (`regions` + `default_region`) so no client keeps a second copy of the
     `REGIONS` table.
+
+36. **The published screenshots come from a synthetic dataset, never from a real
+    search.** `docs/screenshots/` is what a recruiter or a curious engineer
+    actually looks at, and the screens that sell the platform — dashboard,
+    board, position detail, profile — are exactly the ones that would otherwise
+    render which companies the author applied to and what came of it. So
+    `scripts/seed_demo.py` invents the whole world: ten companies on `.example`
+    domains (RFC 2606), 28 positions spread across all 13 reachable statuses, a
+    fictional "Alex Doe" profile, and a chat thread with three pending
+    proposals. It seeds *content*, which is why it is separate from
+    `seed_defaults.py` (config a real install needs) and not part of setup.
+    Two guards, because the damaging mistake is running it with `DB_PATH`
+    unset: it refuses a target whose path doesn't contain `app-demo`, and
+    refuses any database that already holds positions or profile sections.
+    `--force` overrides both and deletes first. Dates are not random — the
+    dashboard summarises the last 7 days and the funnel the last 30, so
+    `DISCOVERY_DAYS` keeps every row inside those windows, and `updated_at` is
+    backdated along an explicit apply → respond → interview chain because the
+    stale detector reads it (left at insert time, the stale list renders
+    empty). Regenerate with `--force` and re-run the capture rather than
+    hand-editing an image.
+
+37. **Score bands, the salary gate and the two outcome markers are English
+    values, migrated in place.** `ScoreCategory` shipped as `EXCELENTE / BUENA /
+    ACEPTABLE / DESCARTAR`, `SalaryGate` as `A VALIDAR`, and the evaluator wrote
+    two further Spanish markers (`DESCARTADA POR SALARIO`, `A VALIDAR`) that
+    aren't score bands at all. None of this was internal: those strings render
+    verbatim on the dashboard, the positions table, the board and the position
+    detail, which contradicts hard rule #5 (the UI is English). Renamed to
+    `EXCELLENT / GOOD / ACCEPTABLE / DISCARD`, `NEEDS VALIDATION`, and
+    `BELOW SALARY FLOOR`, along with the seeded criterion display names
+    (`Alineacion con el perfil` → `Profile alignment`, accent bug included) and
+    the Spanish `recommended_action` strings the evaluator produced.
+    **The two markers are now named** — `SCORE_CATEGORY_MARKERS` in
+    `api/models/enums.py`, `CATEGORY_*` in `core/evaluate_position.py`, mirrored
+    rather than imported because `core/` cannot import from `api/`. They were
+    previously bare literals in two files, which is how they escaped the enum.
+    Migration `a3f1c9d47b20` rewrites `positions.score_category`,
+    `positions.salary_gate` and the `categories` / `salary_gate` / `criteria`
+    JSON on **every** `scoring_configs` row — old versions included, or
+    re-activating one reintroduces Spanish ids. It is reversible and was
+    verified both ways against a copy of a real 539-position database.
+    `normalize_salary_gate` still accepts the Spanish spellings as input
+    aliases: the agent is prompted in the workflow's vocabulary and old
+    evaluations used them, so rejecting them would break re-parsing.
+    Not renamed: the `--score-*` CSS custom properties in `tokens.css`, which
+    keep the design system's delivered names (#12).
