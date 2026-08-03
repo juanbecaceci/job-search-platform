@@ -3,32 +3,32 @@
   "salary_gate": {
     "floor_usd_month": 3500,
     "evaluation_basis": "lower_bound",
-    "unpublished_status": "A VALIDAR",
+    "unpublished_status": "NEEDS VALIDATION",
     "description": "Salary is an eliminatory filter. Any position below the configured monthly USD floor is auto-discarded. If a range is published, the lower bound is evaluated. If no salary is published, the position is not discarded: it is flagged for validation before moving forward."
   },
   "score_threshold_auto_discard": 45,
   "scale_max": 5,
   "categories": [
     {
-      "id": "EXCELENTE",
+      "id": "EXCELLENT",
       "min_score": 80,
       "max_score": 100,
       "recommended_action": "Apply immediately, prioritize over the rest."
     },
     {
-      "id": "BUENA",
+      "id": "GOOD",
       "min_score": 60,
       "max_score": 79,
       "recommended_action": "Apply, preparing the submission well."
     },
     {
-      "id": "ACEPTABLE",
+      "id": "ACCEPTABLE",
       "min_score": 45,
       "max_score": 59,
       "recommended_action": "Apply only if no better options are in progress."
     },
     {
-      "id": "DESCARTAR",
+      "id": "DISCARD",
       "min_score": 0,
       "max_score": 44,
       "recommended_action": "Do not invest time applying."
@@ -37,7 +37,7 @@
   "criteria": [
     {
       "id": "profile_alignment",
-      "name": "Alineacion con el perfil",
+      "name": "Profile alignment",
       "description": "Closeness of the role to the user's target roles (defined in their professional profile). Highest-weight criterion after the salary gate.",
       "weight": 0.4,
       "scale": "1-5",
@@ -51,7 +51,7 @@
     },
     {
       "id": "remote_modality",
-      "name": "Modalidad remota",
+      "name": "Remote modality",
       "description": "Degree of real remote work and timezone compatibility from the user's location.",
       "weight": 0.25,
       "scale": "1-5",
@@ -65,7 +65,7 @@
     },
     {
       "id": "seniority_growth",
-      "name": "Seniority y crecimiento",
+      "name": "Seniority and growth",
       "description": "Real possibility of growing in responsibility and career, not just compensation.",
       "weight": 0.2,
       "scale": "1-5",
@@ -79,7 +79,7 @@
     },
     {
       "id": "company_stability",
-      "name": "Empresa y estabilidad",
+      "name": "Company and stability",
       "description": "Reputation, funding, verifiable track record and stability of the company.",
       "weight": 0.15,
       "scale": "1-5",

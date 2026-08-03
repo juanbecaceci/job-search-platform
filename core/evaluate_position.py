@@ -42,6 +42,13 @@ SALARY_FAIL = "FAIL"
 SALARY_PASS = "PASS"
 SALARY_UNKNOWN = "UNKNOWN"
 
+# Written into a position's category slot instead of a score band when the
+# salary gate — not the score — decides the outcome. Mirrored in
+# `api/models/enums.py` as SCORE_CATEGORY_*; `core/` can't import from `api/`.
+CATEGORY_NEEDS_VALIDATION = "NEEDS VALIDATION"
+CATEGORY_BELOW_FLOOR = "BELOW SALARY FLOOR"
+SALARY_OUTCOME_MARKERS = {CATEGORY_NEEDS_VALIDATION, CATEGORY_BELOW_FLOOR}
+
 
 def load_criteria() -> dict:
     if not CRITERIA_PATH.exists():
@@ -79,8 +86,8 @@ def category_for_score(score: float, criteria: dict) -> dict:
         if score >= category["min_score"]:
             return category
     return {
-        "id": "DESCARTAR",
-        "recommended_action": "No invertir tiempo en aplicar.",
+        "id": "DISCARD",
+        "recommended_action": "Do not invest time applying.",
     }
 
 
@@ -110,9 +117,14 @@ def normalize_salary_gate(entry: dict, criteria: dict) -> dict:
         status = SALARY_FAIL
     elif status_raw in {"PASS", "PASA", "OK", "CUMPLE", "VALIDATED"}:
         status = SALARY_PASS
-    elif status_raw in {"FAIL", "NO_PASA", "BELOW_FLOOR", "DESCARTADA", "DESCARTAR"}:
+    elif status_raw in {"FAIL", "BELOW_FLOOR", "DISCARD", "NO_PASA", "DESCARTADA", "DESCARTAR"}:
         status = SALARY_FAIL
-    elif status_raw in {"UNKNOWN", "UNPUBLISHED", "NO_PUBLICADO", "A_VALIDAR", "A VALIDAR"}:
+    elif status_raw in {
+        "UNKNOWN", "UNPUBLISHED", "NEEDS VALIDATION", "NEEDS_VALIDATION",
+        # Legacy Spanish spellings: the agent is prompted in the workflow's
+        # vocabulary, and older evaluations used these.
+        "NO_PUBLICADO", "A_VALIDAR", "A VALIDAR",
+    }:
         status = SALARY_UNKNOWN
     else:
         status = SALARY_UNKNOWN
@@ -137,11 +149,11 @@ def format_evaluation_notes(
 ) -> str:
     scale_suffix = "/5"
     lines = [
-        f"Salary gate: {category if category in {'A VALIDAR', 'DESCARTADA POR SALARIO'} else salary_gate['status']}",
-        f"Salary floor: USD {salary_gate['floor_usd_month']}/mes",
+        f"Salary gate: {category if category in SALARY_OUTCOME_MARKERS else salary_gate['status']}",
+        f"Salary floor: USD {salary_gate['floor_usd_month']}/month",
     ]
     if salary_gate.get("evaluated_usd_month") != "":
-        lines.append(f"Salary evaluated: USD {salary_gate['evaluated_usd_month']}/mes")
+        lines.append(f"Salary evaluated: USD {salary_gate['evaluated_usd_month']}/month")
     if salary_gate.get("salary_text"):
         lines.append(f"Salary source: {salary_gate['salary_text']}")
     if salary_gate.get("note"):
@@ -292,15 +304,15 @@ def write_scores(entries: list):
                 summary=summary,
                 action=action,
                 salary_gate=salary_gate,
-                category="DESCARTADA POR SALARIO",
-                recommended_action="Descartar automaticamente: no cumple el piso salarial.",
+                category=CATEGORY_BELOW_FLOOR,
+                recommended_action="Auto-discarded: below the salary floor.",
             )
             updates.append({
                 "range": f"{sm.POSITIONS_SHEET}!M{row_idx + 1}:P{row_idx + 1}",
                 "values": [["", "", "Rejected", notes]],
             })
             discarded_salary += 1
-            print(f"  [{pid}] salario < USD {salary_gate['floor_usd_month']}/mes -> Rejected")
+            print(f"  [{pid}] salary < USD {salary_gate['floor_usd_month']}/month -> Rejected")
             continue
 
         final_score = compute_weighted_score(scores, criteria)
@@ -310,10 +322,10 @@ def write_scores(entries: list):
             category = score_category["id"]
             recommended_action = score_category["recommended_action"]
         elif salary_gate["status"] == SALARY_UNKNOWN:
-            category = "A VALIDAR"
+            category = CATEGORY_NEEDS_VALIDATION
             recommended_action = (
-                "Validar salario antes de avanzar; si confirma el piso, seguir la categoria "
-                f"{score_category['id']}."
+                "Validate the salary before advancing; if it clears the floor, "
+                f"follow the {score_category['id']} category."
             )
         else:
             category = score_category["id"]
@@ -340,7 +352,7 @@ def write_scores(entries: list):
             print(f"  [{pid}] {final_score}/100 < {threshold} -> Rejected")
         elif salary_gate["status"] == SALARY_UNKNOWN:
             validation += 1
-            print(f"  [{pid}] {final_score}/100 -> A VALIDAR salario")
+            print(f"  [{pid}] {final_score}/100 -> {CATEGORY_NEEDS_VALIDATION} (salary)")
         else:
             kept += 1
             print(f"  [{pid}] {final_score}/100 -> {category}")

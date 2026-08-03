@@ -32,6 +32,8 @@ if _CORE_DIR not in sys.path:
     sys.path.insert(0, _CORE_DIR)
 
 from core.evaluate_position import (  # noqa: E402
+    CATEGORY_BELOW_FLOOR,
+    CATEGORY_NEEDS_VALIDATION,
     category_for_score,
     compute_weighted_score,
     format_evaluation_notes,
@@ -78,16 +80,16 @@ def _evaluate_one(position: Position, config: ScoringConfig) -> dict[str, Any]:
     threshold = criteria_dict.get("score_threshold_auto_discard", 45)
 
     if salary_gate["status"] == "FAIL":
-        category = "DESCARTADA POR SALARIO"
-        recommended_action = "Descartar automáticamente: no cumple el piso salarial."
+        category = CATEGORY_BELOW_FLOOR
+        recommended_action = "Auto-discarded: below the salary floor."
     elif final_score < threshold:
         category = score_category["id"]
         recommended_action = score_category["recommended_action"]
     elif salary_gate["status"] == "UNKNOWN":
-        category = "A VALIDAR"
+        category = CATEGORY_NEEDS_VALIDATION
         recommended_action = (
-            "Validar salario antes de avanzar; si confirma el piso, seguir la "
-            f"categoría {score_category['id']}."
+            "Validate the salary before advancing; if it clears the floor, "
+            f"follow the {score_category['id']} category."
         )
     else:
         category = score_category["id"]

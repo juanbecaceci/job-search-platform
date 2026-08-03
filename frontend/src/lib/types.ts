@@ -27,6 +27,7 @@ export interface PositionCard {
   salary_raw?: string | null;
   url?: string | null;
   track?: string | null;
+  date_discovered?: string | null;
 }
 
 export interface EvaluationCriterion {

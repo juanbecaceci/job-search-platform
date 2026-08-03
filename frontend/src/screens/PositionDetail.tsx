@@ -97,8 +97,8 @@ export default function PositionDetail() {
           ))}
         </select>
         <span style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>Discovered {fmtDate(p.date_discovered)}</span>
-        {p.salary_gate === "A VALIDAR" && (
-          <span style={{ fontSize: 9.5, letterSpacing: "0.1em", fontWeight: 600, color: "var(--status-warning)" }}>SALARY A VALIDAR</span>
+        {p.salary_gate === "NEEDS VALIDATION" && (
+          <span style={{ fontSize: 9.5, letterSpacing: "0.1em", fontWeight: 600, color: "var(--status-warning)" }}>SALARY NEEDS VALIDATION</span>
         )}
       </div>
 

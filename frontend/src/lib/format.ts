@@ -17,16 +17,24 @@ export const PIPELINE: string[] = [
 export const TERMINAL: string[] = ["Rejected", "Withdrawn", "Ghosted"];
 export const ALL_STATUSES = [...PIPELINE, ...TERMINAL];
 
-/** Score category → CSS var color. */
+/** Score category → CSS var color.
+ *
+ * `score_category` holds one of the four score bands, or one of two markers the
+ * evaluator writes when the salary gate decides the outcome instead of the
+ * score. The token names are the design system's and stay as delivered
+ * (DECISIONS #12), so they don't track this rename.
+ */
 export function scoreColor(category?: string | null): string {
   switch (category) {
-    case "EXCELENTE":
+    case "EXCELLENT":
       return "var(--score-exc)";
-    case "BUENA":
+    case "GOOD":
       return "var(--score-buena)";
-    case "ACEPTABLE":
+    case "ACCEPTABLE":
+    case "NEEDS VALIDATION":
       return "var(--score-acep)";
-    case "DESCARTAR":
+    case "DISCARD":
+    case "BELOW SALARY FLOOR":
       return "var(--score-desc)";
     default:
       return "var(--score-none)";
@@ -46,18 +54,24 @@ export function statusColor(status: string): string {
 
 export const isTerminal = (status: string) => TERMINAL.includes(status);
 
+// Dates are formatted in a fixed English locale, not the browser's. Passing
+// `undefined` renders month names in whatever the OS is set to, so on a Spanish
+// machine an otherwise-English UI showed "1 ago, 20:31" for 1 August. The UI is
+// English by rule (see the root CLAUDE.md), and that has to include its dates.
+const LOCALE = "en-GB";
+
 export function fmtDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return d.toLocaleDateString(LOCALE, { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function fmtDateTime(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(LOCALE, {
     month: "short",
     day: "numeric",
     hour: "2-digit",

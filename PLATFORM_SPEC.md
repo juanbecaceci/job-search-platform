@@ -55,8 +55,8 @@ Terminal: Rejected · Withdrawn · Ghosted
 | `source` | `remotive`, `remoteok`, `himalayas`, `arbeitnow`, `jobicy`, `linkedin`, `indeed`, `manual` |
 | `tipo` (job type) | `full-time`, `gig`, `freelance` |
 | `track` (ranking track) | `full-time`, `gig-freelance` |
-| `salary_gate` | `PASS`, `FAIL`, `A VALIDAR` (unpublished salary — needs validation) |
-| `score_category` | `EXCELENTE` (80–100), `BUENA` (60–79), `ACEPTABLE` (45–59), `DESCARTAR` (0–44) |
+| `salary_gate` | `PASS`, `FAIL`, `NEEDS VALIDATION` (unpublished salary) |
+| `score_category` | `EXCELLENT` (80–100), `GOOD` (60–79), `ACCEPTABLE` (45–59), `DISCARD` (0–44). Plus two markers written when the salary gate, not the score, decides: `NEEDS VALIDATION` and `BELOW SALARY FLOOR` |
 | `search.status` | `draft`, `running`, `finished`, `analyzed`, `failed` |
 | `job.status` | `queued`, `running`, `succeeded`, `failed`, `cancelled` |
 | `job.type` | `search_run`, `evaluate_batch`, `generate_document`, `export_document`, `upload_drive`, `research_company`, `agent_chat`, `import_cv`, `sheets_export` |
@@ -92,7 +92,7 @@ Terminal: Rejected · Withdrawn · Ghosted
   "date_posted": "2026-07-02",
   "date_discovered": "2026-07-08",
   "score": 82.5,
-  "score_category": "EXCELENTE",
+  "score_category": "EXCELLENT",
   "rank": 1,
   "scoring_config_version": 3,
   "evaluation": {
@@ -102,7 +102,7 @@ Terminal: Rejected · Withdrawn · Ghosted
     "company_stability":  { "score": 3, "weight": 0.15, "rationale": "..." }
   },
   "summary": "Strong fit: automation-first role at funded SaaS...",
-  "recommended_action": "Aplicar de inmediato, priorizar sobre el resto.",
+  "recommended_action": "Apply immediately, prioritize over the rest.",
   "status": "Shortlisted",
   "description": "…(job description, max 3000 chars)…",
   "tags": ["python", "automation", "APIs"],
@@ -278,14 +278,14 @@ For `change_type: "action"`, `diff` is `{"action": "create_and_run_search", "pay
 {
   "version": 3,
   "is_active": true,
-  "salary_gate": { "floor_usd_month": 3500, "evaluation_basis": "lower_bound", "unpublished_status": "A VALIDAR" },
+  "salary_gate": { "floor_usd_month": 3500, "evaluation_basis": "lower_bound", "unpublished_status": "NEEDS VALIDATION" },
   "score_threshold_auto_discard": 45,
   "scale_max": 5,
   "categories": [
-    { "id": "EXCELENTE",  "min_score": 80, "max_score": 100, "recommended_action": "Apply immediately, prioritize." },
-    { "id": "BUENA",      "min_score": 60, "max_score": 79,  "recommended_action": "Apply with a well-prepared submission." },
-    { "id": "ACEPTABLE",  "min_score": 45, "max_score": 59,  "recommended_action": "Apply only if nothing better is in progress." },
-    { "id": "DESCARTAR",  "min_score": 0,  "max_score": 44,  "recommended_action": "Do not invest time." }
+    { "id": "EXCELLENT",  "min_score": 80, "max_score": 100, "recommended_action": "Apply immediately, prioritize." },
+    { "id": "GOOD",       "min_score": 60, "max_score": 79,  "recommended_action": "Apply with a well-prepared submission." },
+    { "id": "ACCEPTABLE", "min_score": 45, "max_score": 59,  "recommended_action": "Apply only if nothing better is in progress." },
+    { "id": "DISCARD",    "min_score": 0,  "max_score": 44,  "recommended_action": "Do not invest time." }
   ],
   "criteria": [
     { "id": "profile_alignment", "name": "Profile alignment", "weight": 0.40, "scale": "1-5", "description": "…", "hints": { "5": "…", "1": "…" } },
@@ -344,7 +344,7 @@ Validation the UI should enforce live: **criterion weights must sum to 1.0**; ca
 |---|---|---|
 | GET | `/positions?status&source&search_id&track&min_score&q&sort&page` | filterable table |
 | GET | `/positions/top?limit=5` | best-ranked, excludes Rejected/Withdrawn/Ghosted |
-| GET | `/positions/board` | `{ columns: [{ status, count, positions: [compact cards] }] }` |
+| GET | `/positions/board` | `{ columns: [{ status, count, positions: [compact cards] }] }`. A compact card carries `id, role, company, source, status, score, score_category, rank, salary_raw, url, track, date_discovered` |
 | POST | `/positions` | manual intake |
 | GET | `/positions/{id}` | full detail: position + company + evaluation + events + application + documents |
 | PATCH | `/positions/{id}` | field edits (logs `field_update` event) |
@@ -495,7 +495,7 @@ event: error            data: { "message": "…" }
 - **Optimistic UI** for manual edits (status drag & drop, notes); **explicit confirmation** for agent-proposed changes — these are two visually distinct interaction families.
 - **Empty states matter** (fresh install has zero data): every list/dashboard needs a friendly empty state pointing to the next action (run onboarding → create first search).
 - Long-running actions always show: job started toast → progress in JobsIndicator → completion toast with link to result.
-- Score is always displayed 0–100 with its category color: EXCELENTE / BUENA / ACEPTABLE / DESCARTAR (4 stable semantic colors + neutral for unevaluated).
+- Score is always displayed 0–100 with its category color: EXCELLENT / GOOD / ACCEPTABLE / DISCARD (4 stable semantic colors + neutral for unevaluated).
 - Positions in terminal states (Rejected/Withdrawn/Ghosted) are visually muted everywhere.
 - Destructive actions (delete section, reject change, mark Ghosted) need confirmation.
 - Desktop-first (self-hosted tool), but dashboard and kanban should degrade gracefully to tablet width.

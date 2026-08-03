@@ -84,14 +84,33 @@ class Track(str, Enum):
 class SalaryGate(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
-    A_VALIDAR = "A VALIDAR"  # unpublished salary — needs validation
+    NEEDS_VALIDATION = "NEEDS VALIDATION"  # unpublished salary
 
 
 class ScoreCategory(str, Enum):
-    EXCELENTE = "EXCELENTE"  # 80–100
-    BUENA = "BUENA"  # 60–79
-    ACEPTABLE = "ACEPTABLE"  # 45–59
-    DESCARTAR = "DESCARTAR"  # 0–44
+    """The four bands a score falls into.
+
+    Note these do **not** exhaust `positions.score_category`: the evaluator also
+    writes two outcome markers that aren't score bands — `NEEDS VALIDATION`
+    (scored, but the salary was unpublished) and `BELOW SALARY FLOOR` (failed
+    the eliminatory gate). See `SCORE_CATEGORY_MARKERS` below and
+    `api/jobs/handlers/evaluate_batch.py`.
+    """
+
+    EXCELLENT = "EXCELLENT"  # 80–100
+    GOOD = "GOOD"  # 60–79
+    ACCEPTABLE = "ACCEPTABLE"  # 45–59
+    DISCARD = "DISCARD"  # 0–44
+
+
+# Written into `positions.score_category` in place of a band when the salary
+# gate decides the outcome. Kept next to the enum because the UI colors and the
+# spec's value list have to account for them.
+SCORE_CATEGORY_NEEDS_VALIDATION = "NEEDS VALIDATION"
+SCORE_CATEGORY_BELOW_FLOOR = "BELOW SALARY FLOOR"
+SCORE_CATEGORY_MARKERS: frozenset[str] = frozenset(
+    {SCORE_CATEGORY_NEEDS_VALIDATION, SCORE_CATEGORY_BELOW_FLOOR}
+)
 
 
 class SearchStatus(str, Enum):

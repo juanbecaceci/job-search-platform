@@ -21,7 +21,7 @@ class CompanyRef(ORMModel):
 
 
 class PositionCard(ORMModel):
-    """Compact card for board columns / top lists."""
+    """Compact card for board columns / top lists / the positions table."""
 
     id: str
     role: str
@@ -34,6 +34,9 @@ class PositionCard(ORMModel):
     salary_raw: str | None = None
     url: str | None = None
     track: str | None = None
+    # The positions table has a "Discovered" column; without this it rendered an
+    # em dash on every row regardless of the data.
+    date_discovered: date | None = None
 
 
 class PositionOut(ORMModel):

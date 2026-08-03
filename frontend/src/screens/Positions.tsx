@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useJobAction } from "@/lib/useJobAction";
-import { ALL_STATUSES, scoreColor } from "@/lib/format";
+import { ALL_STATUSES, scoreColor, fmtDate } from "@/lib/format";
 import { ScoreBadge, Loading, ErrorNote, Button } from "@/components/ui";
 import { useSetTopbarRight } from "@/components/shell/AppShell";
 import PositionsViewToggle from "@/components/ViewToggle";
@@ -270,7 +270,9 @@ function Row({
       <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
         {p.salary_raw ?? "—"}
       </span>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--text-tertiary)" }}>—</span>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--text-tertiary)" }}>
+        {fmtDate(p.date_discovered)}
+      </span>
       <select
         value={p.status}
         onChange={(e) => onStatus(e.target.value)}

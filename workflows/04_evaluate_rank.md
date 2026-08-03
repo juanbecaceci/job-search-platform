@@ -40,8 +40,8 @@ Salary is eliminatory and sits outside the weighted average.
 - Floor: `salary_gate.floor_usd_month` in the active config (seeded default:
   **USD 3.500/month** equivalent).
 - If a range is published, evaluate the **lower bound**.
-- Below the floor → **DESCARTADA POR SALARIO**, no score calculated.
-- Not published → do **not** discard. Mark **A VALIDAR**, calculate the
+- Below the floor → **BELOW SALARY FLOOR**, no score calculated.
+- Not published → do **not** discard. Mark **NEEDS VALIDATION**, calculate the
   weighted score anyway, and confirm compensation before advancing.
 
 Contract type does not affect the score. Employment, contractor, freelance and
@@ -71,14 +71,14 @@ proposal that breaks it is rejected rather than applied.
 
 | Category | Score | Recommended action |
 |---|---:|---|
-| EXCELENTE | 80-100 | Apply immediately, prioritize over the rest |
-| BUENA | 60-79 | Apply with a well-prepared application |
-| ACEPTABLE | 45-59 | Apply only if nothing better is in progress |
-| DESCARTAR | <45 | Don't spend time applying |
+| EXCELLENT | 80-100 | Apply immediately, prioritize over the rest |
+| GOOD | 60-79 | Apply with a well-prepared application |
+| ACCEPTABLE | 45-59 | Apply only if nothing better is in progress |
+| DISCARD | <45 | Don't spend time applying |
 
 Additional marks:
-- **DESCARTADA POR SALARIO** — below the floor. No score.
-- **A VALIDAR** — salary not published. Scored, but compensation must be
+- **BELOW SALARY FLOOR** — below the floor. No score.
+- **NEEDS VALIDATION** — salary not published. Scored, but compensation must be
   confirmed before moving forward.
 
 ---
@@ -128,7 +128,7 @@ Expected shape from the agent, per position:
 ```
 
 Salary-gate values: `PASS` (published lower bound meets the floor), `FAIL`
-(below it), `UNKNOWN` (not published → A VALIDAR).
+(below it), `UNKNOWN` (not published → NEEDS VALIDATION).
 
 ### ⚠️ Evaluation does not change status
 
@@ -161,7 +161,7 @@ For each, the user decides:
 - **Shortlist** → status update → proceed to Workflow 05
 - **Skip** → status update to `Rejected`
 - **More info** → research the company (Workflow 06), then re-evaluate
-- **Validate salary** → required before advancing any **A VALIDAR** position
+- **Validate salary** → required before advancing any **NEEDS VALIDATION** position
 
 Re-evaluating is safe and idempotent: it overwrites the evaluation on that
 position. It costs an agent turn per position, so don't re-run a whole batch to
@@ -180,7 +180,7 @@ say so explicitly in the notes, and prefer fetching the description first
 evaluate the conservative lower bound. Document the conversion in
 `salary_gate.note`.
 
-**Salary not published.** `status: "UNKNOWN"`, mark A VALIDAR. Don't advance to
+**Salary not published.** `status: "UNKNOWN"`, mark NEEDS VALIDATION. Don't advance to
 document generation until compensation is confirmed or the user explicitly
 accepts the risk.
 
